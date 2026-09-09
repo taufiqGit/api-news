@@ -1,0 +1,1148 @@
+basePath: /api/v1
+definitions:
+  entity.ArticleCreate:
+    properties:
+      category_id:
+        type: string
+      content:
+        type: string
+      cover_image:
+        type: string
+      excerpt:
+        type: string
+      published_at:
+        type: string
+      slug:
+        type: string
+      status:
+        type: string
+      tag_ids:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+      website_id:
+        type: string
+    required:
+    - content
+    - slug
+    - title
+    - website_id
+    type: object
+  entity.ArticleUpdate:
+    properties:
+      category_id:
+        type: string
+      content:
+        type: string
+      cover_image:
+        type: string
+      excerpt:
+        type: string
+      slug:
+        type: string
+      status:
+        type: string
+      tag_ids:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+      website_id:
+        type: string
+    type: object
+  entity.CategoryCreate:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      parent_id:
+        type: string
+      slug:
+        type: string
+    required:
+    - name
+    - slug
+    type: object
+  entity.CategoryUpdate:
+    properties:
+      description:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      parent_id:
+        type: string
+      slug:
+        type: string
+    type: object
+  entity.CommentCreate:
+    properties:
+      article_id:
+        type: string
+      content:
+        type: string
+      parent_id:
+        type: string
+    required:
+    - article_id
+    - content
+    type: object
+  entity.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  entity.TagCreate:
+    properties:
+      name:
+        type: string
+      slug:
+        type: string
+    required:
+    - name
+    - slug
+    type: object
+  entity.TagUpdate:
+    properties:
+      name:
+        type: string
+      slug:
+        type: string
+    type: object
+  entity.UserCreate:
+    properties:
+      avatar_url:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      role:
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  entity.UserUpdate:
+    properties:
+      avatar_url:
+        type: string
+      email:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      role:
+        type: string
+    type: object
+  entity.WebsiteCreate:
+    properties:
+      description:
+        type: string
+      domain:
+        type: string
+      logo_url:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+    required:
+    - name
+    - slug
+    type: object
+  entity.WebsiteUpdate:
+    properties:
+      description:
+        type: string
+      domain:
+        type: string
+      is_active:
+        type: boolean
+      logo_url:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+    type: object
+  response.Meta:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  response.Response:
+    properties:
+      data: {}
+      errors: {}
+      message:
+        type: string
+      meta:
+        $ref: '#/definitions/response.Meta'
+      success:
+        type: boolean
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@news-api.dev
+    name: News API Support
+  description: REST API untuk website berita. Mendukung auth JWT, artikel, kategori,
+    tag, dan komentar.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: News API
+  version: "1.0"
+paths:
+  /articles:
+    get:
+      description: Menampilkan daftar artikel dengan filter & pagination
+      parameters:
+      - default: 1
+        description: Nomor halaman
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Jumlah per halaman
+        in: query
+        name: limit
+        type: integer
+      - description: 'Filter status: draft/published/archived'
+        in: query
+        name: status
+        type: string
+      - description: Filter kategori (UUID)
+        in: query
+        name: category_id
+        type: string
+      - description: Filter website (UUID)
+        in: query
+        name: website_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Daftar artikel dengan meta pagination
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: List artikel
+      tags:
+      - Articles
+    post:
+      consumes:
+      - application/json
+      description: 'Membuat artikel baru (role: author/editor/admin)'
+      parameters:
+      - description: Data artikel
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.ArticleCreate'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Artikel berhasil dibuat
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Request tidak valid
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Buat artikel
+      tags:
+      - Articles
+  /articles/{id}:
+    delete:
+      description: 'Menghapus artikel (role: author/editor/admin)'
+      parameters:
+      - description: ID artikel
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Artikel berhasil dihapus
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Artikel tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Hapus artikel
+      tags:
+      - Articles
+    get:
+      description: Mengambil detail artikel berdasarkan ID
+      parameters:
+      - description: ID artikel
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Data artikel
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Artikel tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Detail artikel by ID
+      tags:
+      - Articles
+    put:
+      consumes:
+      - application/json
+      description: 'Mengubah data artikel (role: author/editor/admin)'
+      parameters:
+      - description: ID artikel
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Data yang diubah
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.ArticleUpdate'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Artikel berhasil diubah
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Artikel tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update artikel
+      tags:
+      - Articles
+  /articles/{id}/comments:
+    get:
+      description: Menampilkan komentar pada sebuah artikel (publik)
+      parameters:
+      - description: ID artikel
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Daftar komentar
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: List komentar artikel
+      tags:
+      - Comments
+  /articles/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: 'Mengubah status artikel: draft/published/archived'
+      parameters:
+      - description: ID artikel
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Status baru
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            status:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Status berhasil diubah
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Status tidak valid
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update status artikel
+      tags:
+      - Articles
+  /articles/published:
+    get:
+      description: Menampilkan artikel yang sudah published (untuk publik), bisa difilter
+        per website
+      parameters:
+      - default: 1
+        description: Nomor halaman
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Jumlah per halaman
+        in: query
+        name: limit
+        type: integer
+      - description: Filter website (UUID)
+        in: query
+        name: website_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Daftar artikel published
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: List artikel published
+      tags:
+      - Articles
+  /articles/slug/{slug}:
+    get:
+      description: Mengambil detail artikel berdasarkan slug, view count otomatis
+        bertambah
+      parameters:
+      - description: Slug artikel
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Data artikel
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Artikel tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Detail artikel by slug
+      tags:
+      - Articles
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Login dengan email & password, mengembalikan JWT token
+      parameters:
+      - description: Kredensial login
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login sukses, berisi token & user
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Request tidak valid
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Email atau password salah
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Login user
+      tags:
+      - Auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: 'Mendaftarkan user baru (default role: author)'
+      parameters:
+      - description: Data registrasi
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.UserCreate'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User berhasil dibuat
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Request tidak valid
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Register user baru
+      tags:
+      - Auth
+  /categories:
+    get:
+      description: Menampilkan daftar kategori dengan pagination
+      parameters:
+      - default: 1
+        description: Nomor halaman
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Jumlah per halaman
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Daftar kategori dengan meta pagination
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: List kategori
+      tags:
+      - Categories
+    post:
+      consumes:
+      - application/json
+      description: 'Membuat kategori baru (role: editor/admin)'
+      parameters:
+      - description: Data kategori
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.CategoryCreate'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Kategori berhasil dibuat
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Request tidak valid
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Buat kategori
+      tags:
+      - Categories
+  /categories/{id}:
+    delete:
+      description: 'Menghapus kategori (role: editor/admin)'
+      parameters:
+      - description: ID kategori
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Kategori berhasil dihapus
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Kategori tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Hapus kategori
+      tags:
+      - Categories
+    get:
+      description: Mengambil detail kategori berdasarkan ID
+      parameters:
+      - description: ID kategori
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Data kategori
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Kategori tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Detail kategori by ID
+      tags:
+      - Categories
+    put:
+      consumes:
+      - application/json
+      description: 'Mengubah data kategori (role: editor/admin)'
+      parameters:
+      - description: ID kategori
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Data yang diubah
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.CategoryUpdate'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Kategori berhasil diubah
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Kategori tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update kategori
+      tags:
+      - Categories
+  /categories/slug/{slug}:
+    get:
+      description: Mengambil detail kategori berdasarkan slug
+      parameters:
+      - description: Slug kategori
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Data kategori
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Kategori tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Detail kategori by slug
+      tags:
+      - Categories
+  /comments:
+    post:
+      consumes:
+      - application/json
+      description: Membuat komentar pada artikel (perlu login)
+      parameters:
+      - description: Data komentar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.CommentCreate'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Komentar berhasil dibuat
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Request tidak valid
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Artikel tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Buat komentar
+      tags:
+      - Comments
+  /comments/{id}:
+    delete:
+      description: Menghapus komentar (perlu login)
+      parameters:
+      - description: ID komentar
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Komentar berhasil dihapus
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Komentar tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Hapus komentar
+      tags:
+      - Comments
+  /healthz:
+    get:
+      description: Cek status kesehatan server dan koneksi database
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Health check
+      tags:
+      - Health
+  /tags:
+    get:
+      description: Menampilkan semua tag
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Daftar tag
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: List tag
+      tags:
+      - Tags
+    post:
+      consumes:
+      - application/json
+      description: 'Membuat tag baru (role: editor/admin)'
+      parameters:
+      - description: Data tag
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.TagCreate'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Tag berhasil dibuat
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Request tidak valid
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Buat tag
+      tags:
+      - Tags
+  /tags/{id}:
+    delete:
+      description: 'Menghapus tag (role: editor/admin)'
+      parameters:
+      - description: ID tag
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tag berhasil dihapus
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Tag tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Hapus tag
+      tags:
+      - Tags
+    put:
+      consumes:
+      - application/json
+      description: 'Mengubah data tag (role: editor/admin)'
+      parameters:
+      - description: ID tag
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Data yang diubah
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.TagUpdate'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tag berhasil diubah
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Tag tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update tag
+      tags:
+      - Tags
+  /uploads/images:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload gambar (jpeg/png/webp/gif/avif, max 5MB). Mengembalikan
+        URL publik untuk dipakai di artikel.
+      parameters:
+      - description: File gambar (jpeg/png/webp/gif/avif)
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: 'Folder tujuan (default: uploads)'
+        in: formData
+        name: folder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Upload berhasil, berisi url & key
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: File tidak valid
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Upload gambar
+      tags:
+      - Uploads
+  /users:
+    get:
+      description: Menampilkan daftar user (hanya admin)
+      parameters:
+      - default: 1
+        description: Nomor halaman
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Jumlah per halaman
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Daftar user
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: List user
+      tags:
+      - Users
+  /users/{id}:
+    delete:
+      description: Menghapus user (hanya admin)
+      parameters:
+      - description: ID user
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User berhasil dihapus
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: User tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Hapus user
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Mengubah data user (hanya admin)
+      parameters:
+      - description: ID user
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Data yang diubah
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.UserUpdate'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User berhasil diubah
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: User tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update user
+      tags:
+      - Users
+  /users/me:
+    get:
+      description: Mengambil data user berdasarkan token JWT
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Data user
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Tidak terautentikasi
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Profil user saat ini
+      tags:
+      - Users
+  /websites:
+    get:
+      description: Menampilkan daftar semua website dengan pagination
+      parameters:
+      - default: 1
+        description: Nomor halaman
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Jumlah per halaman
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Daftar website dengan meta pagination
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: List website
+      tags:
+      - Websites
+    post:
+      consumes:
+      - application/json
+      description: 'Membuat website baru (role: admin). Setiap website punya artikel
+        sendiri-sendiri.'
+      parameters:
+      - description: Data website
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.WebsiteCreate'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Website berhasil dibuat
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Request tidak valid
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Buat website
+      tags:
+      - Websites
+  /websites/{id}:
+    delete:
+      description: 'Menghapus website beserta seluruh artikelnya (role: admin)'
+      parameters:
+      - description: ID website
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Website berhasil dihapus
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Website tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Hapus website
+      tags:
+      - Websites
+    get:
+      description: Mengambil detail website berdasarkan ID
+      parameters:
+      - description: ID website
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Data website
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Website tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Detail website by ID
+      tags:
+      - Websites
+    put:
+      consumes:
+      - application/json
+      description: 'Mengubah data website (role: admin)'
+      parameters:
+      - description: ID website
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Data yang diubah
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.WebsiteUpdate'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Website berhasil diubah
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Website tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update website
+      tags:
+      - Websites
+  /websites/slug/{slug}:
+    get:
+      description: Mengambil detail website berdasarkan slug
+      parameters:
+      - description: Slug website
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Data website
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Website tidak ditemukan
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Detail website by slug
+      tags:
+      - Websites
+securityDefinitions:
+  BearerAuth:
+    description: 'Masukkan token dengan format: `Bearer <token>`'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -1,0 +1,53 @@
+services:
+  news-api:
+    build: .
+    container_name: news-api-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      APP_PORT: "8080"
+      APP_ENV: "production"
+      APP_URL: "https://api-news.deployaja.web.id"
+      DB_HOST: "news-postgres"
+      DB_PORT: "5432"
+      DB_USER: "news"
+      DB_PASSWORD: "news_secret_2026"
+      DB_NAME: "news_db"
+      DB_SSLMODE: "disable"
+      JWT_SECRET: "${JWT_SECRET:-change-me-in-production}"
+      JWT_EXPIRES_IN_HOURS: "24"
+      S3_ENDPOINT: "nos.jkt-1.neo.id"
+      S3_REGION: "jkt"
+      S3_BUCKET: "news"
+      S3_ACCESS_KEY: "00ad08554e7cbabd80c9"
+      S3_SECRET_KEY: "MUKo4jEBgICncTMW3XzQK9a3LQlSFZTlaUYprDFt"
+      S3_USE_SSL: "true"
+      S3_PUBLIC_URL: "https://news.nos.jkt-1.neo.id"
+    networks:
+      - news-net
+    depends_on:
+      - news-postgres
+
+  news-postgres:
+    image: postgres:16-alpine
+    container_name: news-postgres
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: "news"
+      POSTGRES_PASSWORD: "news_secret_2026"
+      POSTGRES_DB: "news_db"
+    volumes:
+      - news-postgres-data:/var/lib/postgresql/data
+    networks:
+      - news-net
+
+networks:
+  news-net:
+    driver: bridge
+
+volumes:
+  news-postgres-data:
+    external: true
