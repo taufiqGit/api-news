@@ -1,10 +1,11 @@
-.PHONY: run build dev sqlc migrate-up migrate-down migrate-version migrate-force docs test tidy clean
+.PHONY: run build dev air-install sqlc migrate-up migrate-down migrate-version migrate-force docs test tidy clean
 
 # Konfigurasi
 BINARY_NAME = news-api
 DB_URL ?= postgres://news:news_secret_2026@localhost:5433/news_db?sslmode=disable
 MIGRATE ?= $(shell which migrate)
 SWAG ?= $(shell which swag)
+AIR ?= $(shell which air)
 
 ## Jalankan server (dengan .env)
 run:
@@ -14,9 +15,17 @@ run:
 build:
 	go build -o bin/$(BINARY_NAME) ./cmd/server
 
-## Jalankan server dari binary hasil build
-dev: build
-	./bin/$(BINARY_NAME)
+## Jalankan server dengan hot reload (Air)
+dev:
+	@if [ -z "$(AIR)" ]; then \
+		echo "air belum terinstall. Jalankan: make air-install"; \
+		exit 1; \
+	fi
+	air
+
+## Install Air (hot reload untuk dev)
+air-install:
+	go install github.com/air-verse/air@latest
 
 ## Regenerate sqlc code setelah edit db/queries/
 sqlc:
