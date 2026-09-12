@@ -89,6 +89,18 @@ func (r *websiteRepository) List(ctx context.Context, limit, offset int) ([]enti
 	return items, nil
 }
 
+func (r *websiteRepository) ListActive(ctx context.Context) ([]entity.Website, error) {
+	rows, err := r.q.ListActiveWebsites(ctx)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]entity.Website, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, *toWebsiteEntity(row))
+	}
+	return items, nil
+}
+
 func (r *websiteRepository) Count(ctx context.Context) (int64, error) {
 	return r.q.CountWebsites(ctx)
 }

@@ -12,20 +12,28 @@ import (
 )
 
 type Article struct {
-	ID          uuid.UUID          `json:"id"`
-	Title       string             `json:"title"`
-	Slug        string             `json:"slug"`
-	Excerpt     pgtype.Text        `json:"excerpt"`
-	Content     string             `json:"content"`
-	CoverImage  pgtype.Text        `json:"cover_image"`
-	Status      string             `json:"status"`
-	ViewCount   int32              `json:"view_count"`
-	PublishedAt pgtype.Timestamptz `json:"published_at"`
-	CreatedBy   uuid.UUID          `json:"created_by"`
-	CategoryID  pgtype.UUID        `json:"category_id"`
-	CreatedAt   time.Time          `json:"created_at"`
-	UpdatedAt   time.Time          `json:"updated_at"`
-	WebsiteID   pgtype.UUID        `json:"website_id"`
+	ID             uuid.UUID          `json:"id"`
+	Title          string             `json:"title"`
+	Slug           string             `json:"slug"`
+	Excerpt        pgtype.Text        `json:"excerpt"`
+	Content        string             `json:"content"`
+	CoverImage     pgtype.Text        `json:"cover_image"`
+	Status         string             `json:"status"`
+	ViewCount      int32              `json:"view_count"`
+	PublishedAt    pgtype.Timestamptz `json:"published_at"`
+	CreatedBy      uuid.UUID          `json:"created_by"`
+	CategoryID     pgtype.UUID        `json:"category_id"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
+	WebsiteID      pgtype.UUID        `json:"website_id"`
+	SourceUrl      pgtype.Text        `json:"source_url"`
+	SourceType     pgtype.Text        `json:"source_type"`
+	SourceName     pgtype.Text        `json:"source_name"`
+	SourceHash     pgtype.Text        `json:"source_hash"`
+	IsAiGenerated  bool               `json:"is_ai_generated"`
+	ImageCredit    pgtype.Text        `json:"image_credit"`
+	ImageSourceUrl pgtype.Text        `json:"image_source_url"`
+	ImageLicense   pgtype.Text        `json:"image_license"`
 }
 
 type ArticleTag struct {
@@ -52,6 +60,19 @@ type Comment struct {
 	Content    string      `json:"content"`
 	IsApproved bool        `json:"is_approved"`
 	CreatedAt  time.Time   `json:"created_at"`
+}
+
+type SchedulerRun struct {
+	ID              uuid.UUID          `json:"id"`
+	WebsiteID       pgtype.UUID        `json:"website_id"`
+	Status          string             `json:"status"`
+	StartedAt       time.Time          `json:"started_at"`
+	FinishedAt      pgtype.Timestamptz `json:"finished_at"`
+	ArticlesCreated int32              `json:"articles_created"`
+	ArticlesSkipped int32              `json:"articles_skipped"`
+	ArticlesFailed  int32              `json:"articles_failed"`
+	Error           pgtype.Text        `json:"error"`
+	CreatedAt       time.Time          `json:"created_at"`
 }
 
 type Tag struct {

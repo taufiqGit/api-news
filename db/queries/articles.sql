@@ -1,6 +1,8 @@
 -- name: CreateArticle :one
-INSERT INTO articles (title, slug, excerpt, content, cover_image, status, published_at, created_by, category_id, website_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO articles (title, slug, excerpt, content, cover_image, status, published_at, created_by, category_id, website_id,
+                      source_url, source_type, source_name, source_hash, is_ai_generated, image_credit, image_source_url, image_license)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15, $16, $17, $18)
 RETURNING *;
 
 -- name: GetArticleByID :one
@@ -87,3 +89,14 @@ DELETE FROM articles WHERE id = $1;
 SELECT COUNT(*) FROM articles
 WHERE ($1::text = '' OR status = $1)
   AND (CAST(sqlc.narg('website_id') AS uuid) IS NULL OR website_id = CAST(sqlc.narg('website_id') AS uuid));
+
+-- --- Scheduler / dedup ---
+
+-- name: GetArticleBySourceURL :one
+SELECT * FROM articles WHERE source_url = $1;
+
+-- name: GetArticleBySourceHash :one
+SELECT * FROM articles WHERE source_hash = $1;
+
+-- name: GetExistingSourceURLs :many
+SELECT source_url FROM articles WHERE source_url = ANY($1::text[]);

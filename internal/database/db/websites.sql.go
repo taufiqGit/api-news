@@ -134,6 +134,42 @@ func (q *Queries) GetWebsiteBySlug(ctx context.Context, slug string) (Website, e
 	return i, err
 }
 
+const listActiveWebsites = `-- name: ListActiveWebsites :many
+SELECT id, name, slug, domain, description, logo_url, is_active, created_at, updated_at FROM websites
+WHERE is_active = TRUE
+ORDER BY created_at ASC
+`
+
+func (q *Queries) ListActiveWebsites(ctx context.Context) ([]Website, error) {
+	rows, err := q.db.Query(ctx, listActiveWebsites)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Website{}
+	for rows.Next() {
+		var i Website
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.Domain,
+			&i.Description,
+			&i.LogoUrl,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWebsites = `-- name: ListWebsites :many
 SELECT id, name, slug, domain, description, logo_url, is_active, created_at, updated_at FROM websites
 ORDER BY created_at DESC

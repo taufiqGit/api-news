@@ -21,6 +21,11 @@ type ArticleRepository interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 	Count(ctx context.Context, status string, websiteID *uuid.UUID) (int64, error)
 
+	// Dedup / metadata sumber (fitur scheduler)
+	GetBySourceURL(ctx context.Context, sourceURL string) (*entity.Article, error)
+	GetBySourceHash(ctx context.Context, sourceHash string) (*entity.Article, error)
+	GetExistingSourceURLs(ctx context.Context, urls []string) ([]string, error)
+
 	// Tag helpers
 	AttachTags(ctx context.Context, articleID uuid.UUID, tagIDs []uuid.UUID) error
 	ReplaceTags(ctx context.Context, articleID uuid.UUID, tagIDs []uuid.UUID) error

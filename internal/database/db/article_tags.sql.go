@@ -71,7 +71,7 @@ func (q *Queries) ListArticleTags(ctx context.Context, articleID uuid.UUID) ([]T
 }
 
 const listArticlesByTag = `-- name: ListArticlesByTag :many
-SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.cover_image, a.status, a.view_count, a.published_at, a.created_by, a.category_id, a.created_at, a.updated_at, a.website_id, u.name AS author_name, u.avatar_url AS author_avatar,
+SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.cover_image, a.status, a.view_count, a.published_at, a.created_by, a.category_id, a.created_at, a.updated_at, a.website_id, a.source_url, a.source_type, a.source_name, a.source_hash, a.is_ai_generated, a.image_credit, a.image_source_url, a.image_license, u.name AS author_name, u.avatar_url AS author_avatar,
        c.name AS category_name, c.slug AS category_slug,
        w.name AS website_name, w.slug AS website_slug
 FROM articles a
@@ -91,26 +91,34 @@ type ListArticlesByTagParams struct {
 }
 
 type ListArticlesByTagRow struct {
-	ID           uuid.UUID          `json:"id"`
-	Title        string             `json:"title"`
-	Slug         string             `json:"slug"`
-	Excerpt      pgtype.Text        `json:"excerpt"`
-	Content      string             `json:"content"`
-	CoverImage   pgtype.Text        `json:"cover_image"`
-	Status       string             `json:"status"`
-	ViewCount    int32              `json:"view_count"`
-	PublishedAt  pgtype.Timestamptz `json:"published_at"`
-	CreatedBy    uuid.UUID          `json:"created_by"`
-	CategoryID   pgtype.UUID        `json:"category_id"`
-	CreatedAt    time.Time          `json:"created_at"`
-	UpdatedAt    time.Time          `json:"updated_at"`
-	WebsiteID    pgtype.UUID        `json:"website_id"`
-	AuthorName   string             `json:"author_name"`
-	AuthorAvatar pgtype.Text        `json:"author_avatar"`
-	CategoryName pgtype.Text        `json:"category_name"`
-	CategorySlug pgtype.Text        `json:"category_slug"`
-	WebsiteName  pgtype.Text        `json:"website_name"`
-	WebsiteSlug  pgtype.Text        `json:"website_slug"`
+	ID             uuid.UUID          `json:"id"`
+	Title          string             `json:"title"`
+	Slug           string             `json:"slug"`
+	Excerpt        pgtype.Text        `json:"excerpt"`
+	Content        string             `json:"content"`
+	CoverImage     pgtype.Text        `json:"cover_image"`
+	Status         string             `json:"status"`
+	ViewCount      int32              `json:"view_count"`
+	PublishedAt    pgtype.Timestamptz `json:"published_at"`
+	CreatedBy      uuid.UUID          `json:"created_by"`
+	CategoryID     pgtype.UUID        `json:"category_id"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
+	WebsiteID      pgtype.UUID        `json:"website_id"`
+	SourceUrl      pgtype.Text        `json:"source_url"`
+	SourceType     pgtype.Text        `json:"source_type"`
+	SourceName     pgtype.Text        `json:"source_name"`
+	SourceHash     pgtype.Text        `json:"source_hash"`
+	IsAiGenerated  bool               `json:"is_ai_generated"`
+	ImageCredit    pgtype.Text        `json:"image_credit"`
+	ImageSourceUrl pgtype.Text        `json:"image_source_url"`
+	ImageLicense   pgtype.Text        `json:"image_license"`
+	AuthorName     string             `json:"author_name"`
+	AuthorAvatar   pgtype.Text        `json:"author_avatar"`
+	CategoryName   pgtype.Text        `json:"category_name"`
+	CategorySlug   pgtype.Text        `json:"category_slug"`
+	WebsiteName    pgtype.Text        `json:"website_name"`
+	WebsiteSlug    pgtype.Text        `json:"website_slug"`
 }
 
 func (q *Queries) ListArticlesByTag(ctx context.Context, arg ListArticlesByTagParams) ([]ListArticlesByTagRow, error) {
@@ -137,6 +145,14 @@ func (q *Queries) ListArticlesByTag(ctx context.Context, arg ListArticlesByTagPa
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.WebsiteID,
+			&i.SourceUrl,
+			&i.SourceType,
+			&i.SourceName,
+			&i.SourceHash,
+			&i.IsAiGenerated,
+			&i.ImageCredit,
+			&i.ImageSourceUrl,
+			&i.ImageLicense,
 			&i.AuthorName,
 			&i.AuthorAvatar,
 			&i.CategoryName,

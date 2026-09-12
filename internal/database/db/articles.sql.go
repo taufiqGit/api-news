@@ -32,22 +32,32 @@ func (q *Queries) CountArticles(ctx context.Context, arg CountArticlesParams) (i
 }
 
 const createArticle = `-- name: CreateArticle :one
-INSERT INTO articles (title, slug, excerpt, content, cover_image, status, published_at, created_by, category_id, website_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, title, slug, excerpt, content, cover_image, status, view_count, published_at, created_by, category_id, created_at, updated_at, website_id
+INSERT INTO articles (title, slug, excerpt, content, cover_image, status, published_at, created_by, category_id, website_id,
+                      source_url, source_type, source_name, source_hash, is_ai_generated, image_credit, image_source_url, image_license)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15, $16, $17, $18)
+RETURNING id, title, slug, excerpt, content, cover_image, status, view_count, published_at, created_by, category_id, created_at, updated_at, website_id, source_url, source_type, source_name, source_hash, is_ai_generated, image_credit, image_source_url, image_license
 `
 
 type CreateArticleParams struct {
-	Title       string             `json:"title"`
-	Slug        string             `json:"slug"`
-	Excerpt     pgtype.Text        `json:"excerpt"`
-	Content     string             `json:"content"`
-	CoverImage  pgtype.Text        `json:"cover_image"`
-	Status      string             `json:"status"`
-	PublishedAt pgtype.Timestamptz `json:"published_at"`
-	CreatedBy   uuid.UUID          `json:"created_by"`
-	CategoryID  pgtype.UUID        `json:"category_id"`
-	WebsiteID   pgtype.UUID        `json:"website_id"`
+	Title          string             `json:"title"`
+	Slug           string             `json:"slug"`
+	Excerpt        pgtype.Text        `json:"excerpt"`
+	Content        string             `json:"content"`
+	CoverImage     pgtype.Text        `json:"cover_image"`
+	Status         string             `json:"status"`
+	PublishedAt    pgtype.Timestamptz `json:"published_at"`
+	CreatedBy      uuid.UUID          `json:"created_by"`
+	CategoryID     pgtype.UUID        `json:"category_id"`
+	WebsiteID      pgtype.UUID        `json:"website_id"`
+	SourceUrl      pgtype.Text        `json:"source_url"`
+	SourceType     pgtype.Text        `json:"source_type"`
+	SourceName     pgtype.Text        `json:"source_name"`
+	SourceHash     pgtype.Text        `json:"source_hash"`
+	IsAiGenerated  bool               `json:"is_ai_generated"`
+	ImageCredit    pgtype.Text        `json:"image_credit"`
+	ImageSourceUrl pgtype.Text        `json:"image_source_url"`
+	ImageLicense   pgtype.Text        `json:"image_license"`
 }
 
 func (q *Queries) CreateArticle(ctx context.Context, arg CreateArticleParams) (Article, error) {
@@ -62,6 +72,14 @@ func (q *Queries) CreateArticle(ctx context.Context, arg CreateArticleParams) (A
 		arg.CreatedBy,
 		arg.CategoryID,
 		arg.WebsiteID,
+		arg.SourceUrl,
+		arg.SourceType,
+		arg.SourceName,
+		arg.SourceHash,
+		arg.IsAiGenerated,
+		arg.ImageCredit,
+		arg.ImageSourceUrl,
+		arg.ImageLicense,
 	)
 	var i Article
 	err := row.Scan(
@@ -79,6 +97,14 @@ func (q *Queries) CreateArticle(ctx context.Context, arg CreateArticleParams) (A
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.WebsiteID,
+		&i.SourceUrl,
+		&i.SourceType,
+		&i.SourceName,
+		&i.SourceHash,
+		&i.IsAiGenerated,
+		&i.ImageCredit,
+		&i.ImageSourceUrl,
+		&i.ImageLicense,
 	)
 	return i, err
 }
@@ -93,7 +119,7 @@ func (q *Queries) DeleteArticle(ctx context.Context, id uuid.UUID) error {
 }
 
 const getArticleByID = `-- name: GetArticleByID :one
-SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.cover_image, a.status, a.view_count, a.published_at, a.created_by, a.category_id, a.created_at, a.updated_at, a.website_id, u.name AS author_name, u.avatar_url AS author_avatar,
+SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.cover_image, a.status, a.view_count, a.published_at, a.created_by, a.category_id, a.created_at, a.updated_at, a.website_id, a.source_url, a.source_type, a.source_name, a.source_hash, a.is_ai_generated, a.image_credit, a.image_source_url, a.image_license, u.name AS author_name, u.avatar_url AS author_avatar,
        c.name AS category_name, c.slug AS category_slug,
        w.name AS website_name, w.slug AS website_slug
 FROM articles a
@@ -104,26 +130,34 @@ WHERE a.id = $1
 `
 
 type GetArticleByIDRow struct {
-	ID           uuid.UUID          `json:"id"`
-	Title        string             `json:"title"`
-	Slug         string             `json:"slug"`
-	Excerpt      pgtype.Text        `json:"excerpt"`
-	Content      string             `json:"content"`
-	CoverImage   pgtype.Text        `json:"cover_image"`
-	Status       string             `json:"status"`
-	ViewCount    int32              `json:"view_count"`
-	PublishedAt  pgtype.Timestamptz `json:"published_at"`
-	CreatedBy    uuid.UUID          `json:"created_by"`
-	CategoryID   pgtype.UUID        `json:"category_id"`
-	CreatedAt    time.Time          `json:"created_at"`
-	UpdatedAt    time.Time          `json:"updated_at"`
-	WebsiteID    pgtype.UUID        `json:"website_id"`
-	AuthorName   string             `json:"author_name"`
-	AuthorAvatar pgtype.Text        `json:"author_avatar"`
-	CategoryName pgtype.Text        `json:"category_name"`
-	CategorySlug pgtype.Text        `json:"category_slug"`
-	WebsiteName  pgtype.Text        `json:"website_name"`
-	WebsiteSlug  pgtype.Text        `json:"website_slug"`
+	ID             uuid.UUID          `json:"id"`
+	Title          string             `json:"title"`
+	Slug           string             `json:"slug"`
+	Excerpt        pgtype.Text        `json:"excerpt"`
+	Content        string             `json:"content"`
+	CoverImage     pgtype.Text        `json:"cover_image"`
+	Status         string             `json:"status"`
+	ViewCount      int32              `json:"view_count"`
+	PublishedAt    pgtype.Timestamptz `json:"published_at"`
+	CreatedBy      uuid.UUID          `json:"created_by"`
+	CategoryID     pgtype.UUID        `json:"category_id"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
+	WebsiteID      pgtype.UUID        `json:"website_id"`
+	SourceUrl      pgtype.Text        `json:"source_url"`
+	SourceType     pgtype.Text        `json:"source_type"`
+	SourceName     pgtype.Text        `json:"source_name"`
+	SourceHash     pgtype.Text        `json:"source_hash"`
+	IsAiGenerated  bool               `json:"is_ai_generated"`
+	ImageCredit    pgtype.Text        `json:"image_credit"`
+	ImageSourceUrl pgtype.Text        `json:"image_source_url"`
+	ImageLicense   pgtype.Text        `json:"image_license"`
+	AuthorName     string             `json:"author_name"`
+	AuthorAvatar   pgtype.Text        `json:"author_avatar"`
+	CategoryName   pgtype.Text        `json:"category_name"`
+	CategorySlug   pgtype.Text        `json:"category_slug"`
+	WebsiteName    pgtype.Text        `json:"website_name"`
+	WebsiteSlug    pgtype.Text        `json:"website_slug"`
 }
 
 func (q *Queries) GetArticleByID(ctx context.Context, id uuid.UUID) (GetArticleByIDRow, error) {
@@ -144,6 +178,14 @@ func (q *Queries) GetArticleByID(ctx context.Context, id uuid.UUID) (GetArticleB
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.WebsiteID,
+		&i.SourceUrl,
+		&i.SourceType,
+		&i.SourceName,
+		&i.SourceHash,
+		&i.IsAiGenerated,
+		&i.ImageCredit,
+		&i.ImageSourceUrl,
+		&i.ImageLicense,
 		&i.AuthorName,
 		&i.AuthorAvatar,
 		&i.CategoryName,
@@ -155,7 +197,7 @@ func (q *Queries) GetArticleByID(ctx context.Context, id uuid.UUID) (GetArticleB
 }
 
 const getArticleBySlug = `-- name: GetArticleBySlug :one
-SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.cover_image, a.status, a.view_count, a.published_at, a.created_by, a.category_id, a.created_at, a.updated_at, a.website_id, u.name AS author_name, u.avatar_url AS author_avatar,
+SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.cover_image, a.status, a.view_count, a.published_at, a.created_by, a.category_id, a.created_at, a.updated_at, a.website_id, a.source_url, a.source_type, a.source_name, a.source_hash, a.is_ai_generated, a.image_credit, a.image_source_url, a.image_license, u.name AS author_name, u.avatar_url AS author_avatar,
        c.name AS category_name, c.slug AS category_slug,
        w.name AS website_name, w.slug AS website_slug
 FROM articles a
@@ -166,26 +208,34 @@ WHERE a.slug = $1
 `
 
 type GetArticleBySlugRow struct {
-	ID           uuid.UUID          `json:"id"`
-	Title        string             `json:"title"`
-	Slug         string             `json:"slug"`
-	Excerpt      pgtype.Text        `json:"excerpt"`
-	Content      string             `json:"content"`
-	CoverImage   pgtype.Text        `json:"cover_image"`
-	Status       string             `json:"status"`
-	ViewCount    int32              `json:"view_count"`
-	PublishedAt  pgtype.Timestamptz `json:"published_at"`
-	CreatedBy    uuid.UUID          `json:"created_by"`
-	CategoryID   pgtype.UUID        `json:"category_id"`
-	CreatedAt    time.Time          `json:"created_at"`
-	UpdatedAt    time.Time          `json:"updated_at"`
-	WebsiteID    pgtype.UUID        `json:"website_id"`
-	AuthorName   string             `json:"author_name"`
-	AuthorAvatar pgtype.Text        `json:"author_avatar"`
-	CategoryName pgtype.Text        `json:"category_name"`
-	CategorySlug pgtype.Text        `json:"category_slug"`
-	WebsiteName  pgtype.Text        `json:"website_name"`
-	WebsiteSlug  pgtype.Text        `json:"website_slug"`
+	ID             uuid.UUID          `json:"id"`
+	Title          string             `json:"title"`
+	Slug           string             `json:"slug"`
+	Excerpt        pgtype.Text        `json:"excerpt"`
+	Content        string             `json:"content"`
+	CoverImage     pgtype.Text        `json:"cover_image"`
+	Status         string             `json:"status"`
+	ViewCount      int32              `json:"view_count"`
+	PublishedAt    pgtype.Timestamptz `json:"published_at"`
+	CreatedBy      uuid.UUID          `json:"created_by"`
+	CategoryID     pgtype.UUID        `json:"category_id"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
+	WebsiteID      pgtype.UUID        `json:"website_id"`
+	SourceUrl      pgtype.Text        `json:"source_url"`
+	SourceType     pgtype.Text        `json:"source_type"`
+	SourceName     pgtype.Text        `json:"source_name"`
+	SourceHash     pgtype.Text        `json:"source_hash"`
+	IsAiGenerated  bool               `json:"is_ai_generated"`
+	ImageCredit    pgtype.Text        `json:"image_credit"`
+	ImageSourceUrl pgtype.Text        `json:"image_source_url"`
+	ImageLicense   pgtype.Text        `json:"image_license"`
+	AuthorName     string             `json:"author_name"`
+	AuthorAvatar   pgtype.Text        `json:"author_avatar"`
+	CategoryName   pgtype.Text        `json:"category_name"`
+	CategorySlug   pgtype.Text        `json:"category_slug"`
+	WebsiteName    pgtype.Text        `json:"website_name"`
+	WebsiteSlug    pgtype.Text        `json:"website_slug"`
 }
 
 func (q *Queries) GetArticleBySlug(ctx context.Context, slug string) (GetArticleBySlugRow, error) {
@@ -206,6 +256,14 @@ func (q *Queries) GetArticleBySlug(ctx context.Context, slug string) (GetArticle
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.WebsiteID,
+		&i.SourceUrl,
+		&i.SourceType,
+		&i.SourceName,
+		&i.SourceHash,
+		&i.IsAiGenerated,
+		&i.ImageCredit,
+		&i.ImageSourceUrl,
+		&i.ImageLicense,
 		&i.AuthorName,
 		&i.AuthorAvatar,
 		&i.CategoryName,
@@ -214,6 +272,100 @@ func (q *Queries) GetArticleBySlug(ctx context.Context, slug string) (GetArticle
 		&i.WebsiteSlug,
 	)
 	return i, err
+}
+
+const getArticleBySourceHash = `-- name: GetArticleBySourceHash :one
+SELECT id, title, slug, excerpt, content, cover_image, status, view_count, published_at, created_by, category_id, created_at, updated_at, website_id, source_url, source_type, source_name, source_hash, is_ai_generated, image_credit, image_source_url, image_license FROM articles WHERE source_hash = $1
+`
+
+func (q *Queries) GetArticleBySourceHash(ctx context.Context, sourceHash pgtype.Text) (Article, error) {
+	row := q.db.QueryRow(ctx, getArticleBySourceHash, sourceHash)
+	var i Article
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Slug,
+		&i.Excerpt,
+		&i.Content,
+		&i.CoverImage,
+		&i.Status,
+		&i.ViewCount,
+		&i.PublishedAt,
+		&i.CreatedBy,
+		&i.CategoryID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.WebsiteID,
+		&i.SourceUrl,
+		&i.SourceType,
+		&i.SourceName,
+		&i.SourceHash,
+		&i.IsAiGenerated,
+		&i.ImageCredit,
+		&i.ImageSourceUrl,
+		&i.ImageLicense,
+	)
+	return i, err
+}
+
+const getArticleBySourceURL = `-- name: GetArticleBySourceURL :one
+
+SELECT id, title, slug, excerpt, content, cover_image, status, view_count, published_at, created_by, category_id, created_at, updated_at, website_id, source_url, source_type, source_name, source_hash, is_ai_generated, image_credit, image_source_url, image_license FROM articles WHERE source_url = $1
+`
+
+// --- Scheduler / dedup ---
+func (q *Queries) GetArticleBySourceURL(ctx context.Context, sourceUrl pgtype.Text) (Article, error) {
+	row := q.db.QueryRow(ctx, getArticleBySourceURL, sourceUrl)
+	var i Article
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Slug,
+		&i.Excerpt,
+		&i.Content,
+		&i.CoverImage,
+		&i.Status,
+		&i.ViewCount,
+		&i.PublishedAt,
+		&i.CreatedBy,
+		&i.CategoryID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.WebsiteID,
+		&i.SourceUrl,
+		&i.SourceType,
+		&i.SourceName,
+		&i.SourceHash,
+		&i.IsAiGenerated,
+		&i.ImageCredit,
+		&i.ImageSourceUrl,
+		&i.ImageLicense,
+	)
+	return i, err
+}
+
+const getExistingSourceURLs = `-- name: GetExistingSourceURLs :many
+SELECT source_url FROM articles WHERE source_url = ANY($1::text[])
+`
+
+func (q *Queries) GetExistingSourceURLs(ctx context.Context, dollar_1 []string) ([]pgtype.Text, error) {
+	rows, err := q.db.Query(ctx, getExistingSourceURLs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.Text{}
+	for rows.Next() {
+		var source_url pgtype.Text
+		if err := rows.Scan(&source_url); err != nil {
+			return nil, err
+		}
+		items = append(items, source_url)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const incrementViewCount = `-- name: IncrementViewCount :one
@@ -231,7 +383,7 @@ func (q *Queries) IncrementViewCount(ctx context.Context, id uuid.UUID) (int32, 
 }
 
 const listArticles = `-- name: ListArticles :many
-SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.cover_image, a.status, a.view_count, a.published_at, a.created_by, a.category_id, a.created_at, a.updated_at, a.website_id, u.name AS author_name, u.avatar_url AS author_avatar,
+SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.cover_image, a.status, a.view_count, a.published_at, a.created_by, a.category_id, a.created_at, a.updated_at, a.website_id, a.source_url, a.source_type, a.source_name, a.source_hash, a.is_ai_generated, a.image_credit, a.image_source_url, a.image_license, u.name AS author_name, u.avatar_url AS author_avatar,
        c.name AS category_name, c.slug AS category_slug,
        w.name AS website_name, w.slug AS website_slug
 FROM articles a
@@ -254,26 +406,34 @@ type ListArticlesParams struct {
 }
 
 type ListArticlesRow struct {
-	ID           uuid.UUID          `json:"id"`
-	Title        string             `json:"title"`
-	Slug         string             `json:"slug"`
-	Excerpt      pgtype.Text        `json:"excerpt"`
-	Content      string             `json:"content"`
-	CoverImage   pgtype.Text        `json:"cover_image"`
-	Status       string             `json:"status"`
-	ViewCount    int32              `json:"view_count"`
-	PublishedAt  pgtype.Timestamptz `json:"published_at"`
-	CreatedBy    uuid.UUID          `json:"created_by"`
-	CategoryID   pgtype.UUID        `json:"category_id"`
-	CreatedAt    time.Time          `json:"created_at"`
-	UpdatedAt    time.Time          `json:"updated_at"`
-	WebsiteID    pgtype.UUID        `json:"website_id"`
-	AuthorName   string             `json:"author_name"`
-	AuthorAvatar pgtype.Text        `json:"author_avatar"`
-	CategoryName pgtype.Text        `json:"category_name"`
-	CategorySlug pgtype.Text        `json:"category_slug"`
-	WebsiteName  pgtype.Text        `json:"website_name"`
-	WebsiteSlug  pgtype.Text        `json:"website_slug"`
+	ID             uuid.UUID          `json:"id"`
+	Title          string             `json:"title"`
+	Slug           string             `json:"slug"`
+	Excerpt        pgtype.Text        `json:"excerpt"`
+	Content        string             `json:"content"`
+	CoverImage     pgtype.Text        `json:"cover_image"`
+	Status         string             `json:"status"`
+	ViewCount      int32              `json:"view_count"`
+	PublishedAt    pgtype.Timestamptz `json:"published_at"`
+	CreatedBy      uuid.UUID          `json:"created_by"`
+	CategoryID     pgtype.UUID        `json:"category_id"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
+	WebsiteID      pgtype.UUID        `json:"website_id"`
+	SourceUrl      pgtype.Text        `json:"source_url"`
+	SourceType     pgtype.Text        `json:"source_type"`
+	SourceName     pgtype.Text        `json:"source_name"`
+	SourceHash     pgtype.Text        `json:"source_hash"`
+	IsAiGenerated  bool               `json:"is_ai_generated"`
+	ImageCredit    pgtype.Text        `json:"image_credit"`
+	ImageSourceUrl pgtype.Text        `json:"image_source_url"`
+	ImageLicense   pgtype.Text        `json:"image_license"`
+	AuthorName     string             `json:"author_name"`
+	AuthorAvatar   pgtype.Text        `json:"author_avatar"`
+	CategoryName   pgtype.Text        `json:"category_name"`
+	CategorySlug   pgtype.Text        `json:"category_slug"`
+	WebsiteName    pgtype.Text        `json:"website_name"`
+	WebsiteSlug    pgtype.Text        `json:"website_slug"`
 }
 
 func (q *Queries) ListArticles(ctx context.Context, arg ListArticlesParams) ([]ListArticlesRow, error) {
@@ -306,6 +466,14 @@ func (q *Queries) ListArticles(ctx context.Context, arg ListArticlesParams) ([]L
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.WebsiteID,
+			&i.SourceUrl,
+			&i.SourceType,
+			&i.SourceName,
+			&i.SourceHash,
+			&i.IsAiGenerated,
+			&i.ImageCredit,
+			&i.ImageSourceUrl,
+			&i.ImageLicense,
 			&i.AuthorName,
 			&i.AuthorAvatar,
 			&i.CategoryName,
@@ -324,7 +492,7 @@ func (q *Queries) ListArticles(ctx context.Context, arg ListArticlesParams) ([]L
 }
 
 const listPublishedArticles = `-- name: ListPublishedArticles :many
-SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.cover_image, a.status, a.view_count, a.published_at, a.created_by, a.category_id, a.created_at, a.updated_at, a.website_id, u.name AS author_name, u.avatar_url AS author_avatar,
+SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.cover_image, a.status, a.view_count, a.published_at, a.created_by, a.category_id, a.created_at, a.updated_at, a.website_id, a.source_url, a.source_type, a.source_name, a.source_hash, a.is_ai_generated, a.image_credit, a.image_source_url, a.image_license, u.name AS author_name, u.avatar_url AS author_avatar,
        c.name AS category_name, c.slug AS category_slug,
        w.name AS website_name, w.slug AS website_slug
 FROM articles a
@@ -345,26 +513,34 @@ type ListPublishedArticlesParams struct {
 }
 
 type ListPublishedArticlesRow struct {
-	ID           uuid.UUID          `json:"id"`
-	Title        string             `json:"title"`
-	Slug         string             `json:"slug"`
-	Excerpt      pgtype.Text        `json:"excerpt"`
-	Content      string             `json:"content"`
-	CoverImage   pgtype.Text        `json:"cover_image"`
-	Status       string             `json:"status"`
-	ViewCount    int32              `json:"view_count"`
-	PublishedAt  pgtype.Timestamptz `json:"published_at"`
-	CreatedBy    uuid.UUID          `json:"created_by"`
-	CategoryID   pgtype.UUID        `json:"category_id"`
-	CreatedAt    time.Time          `json:"created_at"`
-	UpdatedAt    time.Time          `json:"updated_at"`
-	WebsiteID    pgtype.UUID        `json:"website_id"`
-	AuthorName   string             `json:"author_name"`
-	AuthorAvatar pgtype.Text        `json:"author_avatar"`
-	CategoryName pgtype.Text        `json:"category_name"`
-	CategorySlug pgtype.Text        `json:"category_slug"`
-	WebsiteName  pgtype.Text        `json:"website_name"`
-	WebsiteSlug  pgtype.Text        `json:"website_slug"`
+	ID             uuid.UUID          `json:"id"`
+	Title          string             `json:"title"`
+	Slug           string             `json:"slug"`
+	Excerpt        pgtype.Text        `json:"excerpt"`
+	Content        string             `json:"content"`
+	CoverImage     pgtype.Text        `json:"cover_image"`
+	Status         string             `json:"status"`
+	ViewCount      int32              `json:"view_count"`
+	PublishedAt    pgtype.Timestamptz `json:"published_at"`
+	CreatedBy      uuid.UUID          `json:"created_by"`
+	CategoryID     pgtype.UUID        `json:"category_id"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
+	WebsiteID      pgtype.UUID        `json:"website_id"`
+	SourceUrl      pgtype.Text        `json:"source_url"`
+	SourceType     pgtype.Text        `json:"source_type"`
+	SourceName     pgtype.Text        `json:"source_name"`
+	SourceHash     pgtype.Text        `json:"source_hash"`
+	IsAiGenerated  bool               `json:"is_ai_generated"`
+	ImageCredit    pgtype.Text        `json:"image_credit"`
+	ImageSourceUrl pgtype.Text        `json:"image_source_url"`
+	ImageLicense   pgtype.Text        `json:"image_license"`
+	AuthorName     string             `json:"author_name"`
+	AuthorAvatar   pgtype.Text        `json:"author_avatar"`
+	CategoryName   pgtype.Text        `json:"category_name"`
+	CategorySlug   pgtype.Text        `json:"category_slug"`
+	WebsiteName    pgtype.Text        `json:"website_name"`
+	WebsiteSlug    pgtype.Text        `json:"website_slug"`
 }
 
 func (q *Queries) ListPublishedArticles(ctx context.Context, arg ListPublishedArticlesParams) ([]ListPublishedArticlesRow, error) {
@@ -391,6 +567,14 @@ func (q *Queries) ListPublishedArticles(ctx context.Context, arg ListPublishedAr
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.WebsiteID,
+			&i.SourceUrl,
+			&i.SourceType,
+			&i.SourceName,
+			&i.SourceHash,
+			&i.IsAiGenerated,
+			&i.ImageCredit,
+			&i.ImageSourceUrl,
+			&i.ImageLicense,
 			&i.AuthorName,
 			&i.AuthorAvatar,
 			&i.CategoryName,
@@ -421,7 +605,7 @@ SET title = COALESCE($1, title),
     website_id = COALESCE($8, website_id),
     updated_at = NOW()
 WHERE id = $9
-RETURNING id, title, slug, excerpt, content, cover_image, status, view_count, published_at, created_by, category_id, created_at, updated_at, website_id
+RETURNING id, title, slug, excerpt, content, cover_image, status, view_count, published_at, created_by, category_id, created_at, updated_at, website_id, source_url, source_type, source_name, source_hash, is_ai_generated, image_credit, image_source_url, image_license
 `
 
 type UpdateArticleParams struct {
@@ -464,6 +648,14 @@ func (q *Queries) UpdateArticle(ctx context.Context, arg UpdateArticleParams) (A
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.WebsiteID,
+		&i.SourceUrl,
+		&i.SourceType,
+		&i.SourceName,
+		&i.SourceHash,
+		&i.IsAiGenerated,
+		&i.ImageCredit,
+		&i.ImageSourceUrl,
+		&i.ImageLicense,
 	)
 	return i, err
 }
@@ -474,7 +666,7 @@ SET status = $2,
     published_at = CASE WHEN $2 = 'published' THEN COALESCE(published_at, NOW()) ELSE published_at END,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, title, slug, excerpt, content, cover_image, status, view_count, published_at, created_by, category_id, created_at, updated_at, website_id
+RETURNING id, title, slug, excerpt, content, cover_image, status, view_count, published_at, created_by, category_id, created_at, updated_at, website_id, source_url, source_type, source_name, source_hash, is_ai_generated, image_credit, image_source_url, image_license
 `
 
 type UpdateArticleStatusParams struct {
@@ -500,6 +692,14 @@ func (q *Queries) UpdateArticleStatus(ctx context.Context, arg UpdateArticleStat
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.WebsiteID,
+		&i.SourceUrl,
+		&i.SourceType,
+		&i.SourceName,
+		&i.SourceHash,
+		&i.IsAiGenerated,
+		&i.ImageCredit,
+		&i.ImageSourceUrl,
+		&i.ImageLicense,
 	)
 	return i, err
 }

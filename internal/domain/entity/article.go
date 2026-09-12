@@ -22,6 +22,16 @@ type Article struct {
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 
+	// Metadata sumber berita (fitur scheduler AI)
+	SourceURL      *string `json:"source_url"`
+	SourceType     *string `json:"source_type"`
+	SourceName     *string `json:"source_name"`
+	SourceHash     *string `json:"source_hash"`
+	IsAiGenerated  bool    `json:"is_ai_generated"`
+	ImageCredit    *string `json:"image_credit"`
+	ImageSourceURL *string `json:"image_source_url"`
+	ImageLicense   *string `json:"image_license"`
+
 	// Joined fields
 	AuthorName   *string `json:"author_name"`
 	AuthorAvatar *string `json:"author_avatar"`
@@ -33,28 +43,28 @@ type Article struct {
 }
 
 type ArticleCreate struct {
-	Title       string     `json:"title" binding:"required"`
-	Slug        string     `json:"slug" binding:"required"`
-	Excerpt     *string    `json:"excerpt"`
-	Content     string     `json:"content" binding:"required"`
-	CoverImage  *string    `json:"cover_image"`
-	Status      string     `json:"status"`
-	PublishedAt *time.Time `json:"published_at"`
-	CategoryID  *uuid.UUID `json:"category_id"`
-	WebsiteID   *uuid.UUID `json:"website_id" binding:"required"`
+	Title       string      `json:"title" binding:"required"`
+	Slug        string      `json:"slug" binding:"required"`
+	Excerpt     *string     `json:"excerpt"`
+	Content     string      `json:"content" binding:"required"`
+	CoverImage  *string     `json:"cover_image"`
+	Status      string      `json:"status"`
+	PublishedAt *time.Time  `json:"published_at"`
+	CategoryID  *uuid.UUID  `json:"category_id"`
+	WebsiteID   *uuid.UUID  `json:"website_id" binding:"required"`
 	TagIDs      []uuid.UUID `json:"tag_ids"`
 }
 
 type ArticleUpdate struct {
-	Title       *string    `json:"title"`
-	Slug        *string    `json:"slug"`
-	Excerpt     *string    `json:"excerpt"`
-	Content     *string    `json:"content"`
-	CoverImage  *string    `json:"cover_image"`
-	Status      *string    `json:"status"`
-	CategoryID  *uuid.UUID `json:"category_id"`
-	WebsiteID   *uuid.UUID `json:"website_id"`
-	TagIDs      []uuid.UUID `json:"tag_ids"`
+	Title      *string     `json:"title"`
+	Slug       *string     `json:"slug"`
+	Excerpt    *string     `json:"excerpt"`
+	Content    *string     `json:"content"`
+	CoverImage *string     `json:"cover_image"`
+	Status     *string     `json:"status"`
+	CategoryID *uuid.UUID  `json:"category_id"`
+	WebsiteID  *uuid.UUID  `json:"website_id"`
+	TagIDs     []uuid.UUID `json:"tag_ids"`
 }
 
 type ArticleQuery struct {

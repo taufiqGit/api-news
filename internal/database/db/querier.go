@@ -15,11 +15,13 @@ type Querier interface {
 	CountArticleComments(ctx context.Context, articleID uuid.UUID) (int64, error)
 	CountArticles(ctx context.Context, arg CountArticlesParams) (int64, error)
 	CountCategories(ctx context.Context) (int64, error)
+	CountSchedulerRuns(ctx context.Context) (int64, error)
 	CountWebsites(ctx context.Context) (int64, error)
 	CreateArticle(ctx context.Context, arg CreateArticleParams) (Article, error)
 	CreateArticleTag(ctx context.Context, arg CreateArticleTagParams) error
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
 	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
+	CreateSchedulerRun(ctx context.Context, websiteID pgtype.UUID) (SchedulerRun, error)
 	CreateTag(ctx context.Context, arg CreateTagParams) (Tag, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateWebsite(ctx context.Context, arg CreateWebsiteParams) (Website, error)
@@ -30,12 +32,18 @@ type Querier interface {
 	DeleteTag(ctx context.Context, id uuid.UUID) error
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 	DeleteWebsite(ctx context.Context, id uuid.UUID) error
+	FinishSchedulerRun(ctx context.Context, arg FinishSchedulerRunParams) (SchedulerRun, error)
 	GetArticleByID(ctx context.Context, id uuid.UUID) (GetArticleByIDRow, error)
 	GetArticleBySlug(ctx context.Context, slug string) (GetArticleBySlugRow, error)
+	GetArticleBySourceHash(ctx context.Context, sourceHash pgtype.Text) (Article, error)
+	// --- Scheduler / dedup ---
+	GetArticleBySourceURL(ctx context.Context, sourceUrl pgtype.Text) (Article, error)
 	GetCategoryByID(ctx context.Context, id uuid.UUID) (Category, error)
 	GetCategoryBySlug(ctx context.Context, slug string) (Category, error)
 	GetCommentByID(ctx context.Context, id uuid.UUID) (Comment, error)
+	GetExistingSourceURLs(ctx context.Context, dollar_1 []string) ([]pgtype.Text, error)
 	GetOrCreateTag(ctx context.Context, arg GetOrCreateTagParams) (Tag, error)
+	GetSchedulerRunByID(ctx context.Context, id uuid.UUID) (SchedulerRun, error)
 	GetTagByID(ctx context.Context, id uuid.UUID) (Tag, error)
 	GetTagBySlug(ctx context.Context, slug string) (Tag, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
@@ -44,6 +52,7 @@ type Querier interface {
 	GetWebsiteByID(ctx context.Context, id uuid.UUID) (Website, error)
 	GetWebsiteBySlug(ctx context.Context, slug string) (Website, error)
 	IncrementViewCount(ctx context.Context, id uuid.UUID) (int32, error)
+	ListActiveWebsites(ctx context.Context) ([]Website, error)
 	ListArticleComments(ctx context.Context, arg ListArticleCommentsParams) ([]ListArticleCommentsRow, error)
 	ListArticleTags(ctx context.Context, articleID uuid.UUID) ([]Tag, error)
 	ListArticles(ctx context.Context, arg ListArticlesParams) ([]ListArticlesRow, error)
@@ -51,6 +60,7 @@ type Querier interface {
 	ListCategories(ctx context.Context) ([]Category, error)
 	ListCategoriesPaginated(ctx context.Context, arg ListCategoriesPaginatedParams) ([]Category, error)
 	ListPublishedArticles(ctx context.Context, arg ListPublishedArticlesParams) ([]ListPublishedArticlesRow, error)
+	ListSchedulerRuns(ctx context.Context, arg ListSchedulerRunsParams) ([]SchedulerRun, error)
 	ListTags(ctx context.Context) ([]Tag, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	ListWebsites(ctx context.Context, arg ListWebsitesParams) ([]Website, error)

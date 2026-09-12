@@ -34,3 +34,8 @@ RETURNING *;
 
 -- name: DeleteWebsite :exec
 DELETE FROM websites WHERE id = $1;
+
+-- name: ListActiveWebsites :many
+SELECT * FROM websites
+WHERE is_active = TRUE
+ORDER BY created_at ASC;

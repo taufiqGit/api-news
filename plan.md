@@ -50,6 +50,8 @@ db/
 
 ## Phase 1 — Schema & Data Layer
 
+**Status: SELESAI** — migration `000009` di-apply, sqlc di-regenerate, build hijau.
+
 **Tujuan:** siapkan database agar bisa menyimpan artikel hasil AI + metadata sumber + dedup + audit.
 
 **Deliverable:**
@@ -79,9 +81,15 @@ db/
 - `internal/repository/*.go`
 
 **Acceptance:**
-- [ ] `make sqlc` sukses, tidak ada kolom mapper yang hilang.
-- [ ] `make migrate-up` berhasil & system user ada.
-- [ ] Test build hijau.
+- [x] `make sqlc` sukses, tidak ada kolom mapper yang hilang.
+- [x] `make migrate-up` berhasil & system user ada.
+- [x] Test build hijau.
+
+**Catatan implementasi:**
+- Migration skema memakai nomor `000009` (`000008` sudah dipakai seed).
+- Entity baru: `SchedulerRun` (+ konstanta status), `SourceItem`, `RewriteRequest`/`RewriteResult`.
+- Interface repository baru: `SchedulerRunRepository`; `ArticleRepository` + `GetBySourceURL`/`GetBySourceHash`/`GetExistingSourceURLs`; `WebsiteRepository` + `ListActive`.
+- Perbaikan kecil: `toArticleEntity` kini juga memetakan `WebsiteID` (sebelumnya terlewat).
 
 ---
 
