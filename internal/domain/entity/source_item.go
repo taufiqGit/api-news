@@ -13,4 +13,6 @@ type SourceItem struct {
 	ImageCredit string    // atribusi gambar dari sumber (jika ada)
 	PublishedAt time.Time // waktu terbit di sumber (zero time jika tidak diketahui)
 	Category    string    // kategori dari sumber (opsional)
+	SourceName  string    // nama publikasi sumber (mis. "BBC News")
+	SourceType  string    // tipe sumber (source.TypeRSS / source.TypeGoogleNews)
 }

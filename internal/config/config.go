@@ -10,11 +10,14 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	JWT      JWTConfig
-	S3       S3Config
-	AppURL   string
+	Server    ServerConfig
+	Database  DatabaseConfig
+	JWT       JWTConfig
+	S3        S3Config
+	Scheduler SchedulerConfig
+	AI        AIConfig
+	News      NewsConfig
+	AppURL    string
 }
 
 type ServerConfig struct {
@@ -48,6 +51,29 @@ type S3Config struct {
 	SecretKey string
 	UseSSL    bool
 	PublicURL string // URL publik untuk akses file (opsional)
+}
+
+// SchedulerConfig mengontrol runtime in-process scheduler berita.
+type SchedulerConfig struct {
+	Enabled         bool
+	IntervalMinutes int
+	MaxConcurrency  int
+	DefaultStatus   string
+}
+
+// AIConfig adalah konfigurasi provider AI [OI]-compatible.
+type AIConfig struct {
+	Provider    string
+	APIKey      string
+	BaseURL     string
+	Model       string
+	MaxTokens   int
+	Temperature float64
+}
+
+// NewsConfig mengontrol sumber & jumlah berita per eksekusi.
+type NewsConfig struct {
+	ItemsPerWebsite int
 }
 
 // Load membaca konfigurasi dari .env dan environment variable
@@ -86,6 +112,23 @@ func Load() (*Config, error) {
 			UseSSL:    getEnv("S3_USE_SSL", "true") == "true",
 			PublicURL: getEnv("S3_PUBLIC_URL", ""),
 		},
+		Scheduler: SchedulerConfig{
+			Enabled:         getEnv("SCHEDULER_ENABLED", "false") == "true",
+			IntervalMinutes: getEnvInt("SCHEDULER_INTERVAL_MINUTES", 10),
+			MaxConcurrency:  getEnvInt("SCHEDULER_MAX_CONCURRENCY", 3),
+			DefaultStatus:   getEnv("SCHEDULER_DEFAULT_STATUS", "published"),
+		},
+		AI: AIConfig{
+			Provider:    getEnv("AI_PROVIDER", "openai"),
+			APIKey:      getEnv("AI_API_KEY", ""),
+			BaseURL:     getEnv("AI_BASE_URL", "https://api.openai.com/v1"),
+			Model:       getEnv("AI_MODEL", "gpt-4o-mini"),
+			MaxTokens:   getEnvInt("AI_MAX_TOKENS", 0),
+			Temperature: getEnvFloat("AI_TEMPERATURE", 0.7),
+		},
+		News: NewsConfig{
+			ItemsPerWebsite: getEnvInt("NEWS_ITEMS_PER_WEBSITE", 5),
+		},
 	}
 
 	return cfg, nil
@@ -110,6 +153,15 @@ func getEnvInt(key string, fallback int) int {
 	if v, ok := os.LookupEnv(key); ok {
 		if i, err := strconv.Atoi(v); err == nil {
 			return i
+		}
+	}
+	return fallback
+}
+
+func getEnvFloat(key string, fallback float64) float64 {
+	if v, ok := os.LookupEnv(key); ok {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			return f
 		}
 	}
 	return fallback

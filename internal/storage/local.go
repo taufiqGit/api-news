@@ -7,7 +7,6 @@ import (
 	"mime/multipart"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,40 +28,24 @@ func NewLocal(dir string) (Storage, error) {
 }
 
 func (s *localStorage) Upload(ctx context.Context, file multipart.File, header *multipart.FileHeader, folder string) (*FileInfo, error) {
-	// Validasi ukuran
 	if header.Size > MaxUploadSize {
 		return nil, ErrFileTooLarge
 	}
+	return s.save(ctx, file, header.Size, header.Filename, header.Header.Get("Content-Type"), folder)
+}
 
-	contentType := header.Header.Get("Content-Type")
-	if !allowedImageTypes[contentType] {
-		ext := strings.ToLower(filepath.Ext(header.Filename))
-		extTypes := map[string]string{
-			".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-			".png": "image/png", ".webp": "image/webp",
-			".gif": "image/gif", ".avif": "image/avif",
-		}
-		detected, ok := extTypes[ext]
-		if !ok {
-			return nil, ErrUnsupportedType
-		}
-		contentType = detected
+// UploadReader meng-upload data dari io.Reader ke disk.
+func (s *localStorage) UploadReader(ctx context.Context, r io.Reader, size int64, filename, contentType, folder string) (*FileInfo, error) {
+	if size > MaxUploadSize {
+		return nil, ErrFileTooLarge
 	}
+	return s.save(ctx, r, size, filename, contentType, folder)
+}
 
-	ext := strings.ToLower(filepath.Ext(header.Filename))
-	if ext == "" {
-		switch contentType {
-		case "image/jpeg":
-			ext = ".jpg"
-		case "image/png":
-			ext = ".png"
-		case "image/webp":
-			ext = ".webp"
-		case "image/gif":
-			ext = ".gif"
-		case "image/avif":
-			ext = ".avif"
-		}
+func (s *localStorage) save(ctx context.Context, r io.Reader, size int64, filename, contentType, folder string) (*FileInfo, error) {
+	contentType, ext, err := resolveImageType(contentType, filename)
+	if err != nil {
+		return nil, err
 	}
 
 	now := time.Now()
@@ -79,14 +62,14 @@ func (s *localStorage) Upload(ctx context.Context, file multipart.File, header *
 	}
 	defer dst.Close()
 
-	if _, err := io.Copy(dst, file); err != nil {
+	if _, err := io.Copy(dst, r); err != nil {
 		return nil, err
 	}
 
 	return &FileInfo{
 		Key:         relPath,
 		URL:         s.URL(relPath),
-		Size:        header.Size,
+		Size:        size,
 		ContentType: contentType,
 	}, nil
 }
