@@ -283,13 +283,13 @@ db/
 
 **Deliverable:**
 - [x] Unit test: slug dedup, dedup source_url, parse output AI, image validation.
-- [ ] (Opsional) integration test pakai mock source & mock rewriter.
+- [x] (Opsional) integration test pakai mock source & mock rewriter.
 - [x] Update `README.md`: cara setup API key, env baru, cara run scheduler.
 - [x] Update `.env.example` (var scheduler/AI/news source).
 - [x] Update `Makefile` (target dev tetap Air; tidak perlu worker terpisah — scheduler in-process).
 - [x] Update `docker-compose.yml` (tambah `SCHEDULER_*`, `AI_*`, `NEWS_*`).
 
-**Files:** `internal/service/slug_test.go`, `internal/service/pipeline_test.go`, `internal/ai/openai_test.go`, `internal/storage/helpers_test.go`, `README.md`, `.env.example`, `docker-compose.yml` (semua baru/ubah).
+**Files:** `internal/service/slug_test.go`, `internal/service/pipeline_test.go`, `internal/service/pipeline_integration_test.go`, `internal/ai/openai_test.go`, `internal/storage/helpers_test.go`, `README.md`, `.env.example`, `docker-compose.yml` (semua baru/ubah).
 
 **Acceptance:**
 - [x] `go test ./...` hijau (termasuk test existing).
@@ -298,6 +298,7 @@ db/
 
 **Catatan implementasi:**
 - 4 file test baru: `slug_test.go` (cleanSlug+itoa), `pipeline_test.go` (sourceHash+firstNonEmpty+strPtr), `openai_test.go` (stripFences+parseResult+anti-slop prompt), `helpers_test.go` (resolveImageType).
+- `pipeline_integration_test.go`: integration test `ProcessWebsite` dengan mock `NewsSource`/`Rewriter` + mock repository/storage — mencakup happy path, dedup skip, rewrite error, no-sources, dan attach tags+kategori.
 - Fix bug minor: `uniqueSlug` kini benar-benar fallback ke title bila slug kosong (sebelumnya `cleanSlug("")` langsung balas "article" sehingga fallback title tidak pernah jalan).
 - `Makefile` tidak diubah (target `dev` Air & `build`/`sqlc` sudah ada; scheduler in-process tidak butuh target worker terpisah).
 - `docker-compose.yml` menambah env `SCHEDULER_*`/`AI_*`/`NEWS_*` dengan placeholder `AI_API_KEY` kosong (tidak hardcode secret); nilai di-inject dari env host via `${VAR:-default}`.
