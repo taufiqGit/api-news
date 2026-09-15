@@ -217,6 +217,60 @@ info:
   title: News API
   version: "1.0"
 paths:
+  /admin/scheduler/run:
+    post:
+      description: 'Menjalankan satu siklus scheduler secara manual (async). Role:
+        admin.'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Run dipicu
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Response'
+        "503":
+          description: Scheduler disabled
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Trigger scheduler manual
+      tags:
+      - Admin
+  /admin/scheduler/runs:
+    get:
+      description: 'Menampilkan daftar riwayat eksekusi scheduler. Role: admin.'
+      parameters:
+      - default: 1
+        description: Nomor halaman
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Jumlah per halaman
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Daftar run dengan meta
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Riwayat scheduler runs
+      tags:
+      - Admin
   /articles:
     get:
       description: Menampilkan daftar artikel dengan filter & pagination

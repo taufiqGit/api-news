@@ -24,6 +24,17 @@ services:
       S3_SECRET_KEY: "MUKo4jEBgICncTMW3XzQK9a3LQlSFZTlaUYprDFt"
       S3_USE_SSL: "true"
       S3_PUBLIC_URL: "https://news.nos.jkt-1.neo.id"
+      SCHEDULER_ENABLED: "${SCHEDULER_ENABLED:-false}"
+      SCHEDULER_INTERVAL_MINUTES: "${SCHEDULER_INTERVAL_MINUTES:-10}"
+      SCHEDULER_MAX_CONCURRENCY: "${SCHEDULER_MAX_CONCURRENCY:-3}"
+      SCHEDULER_DEFAULT_STATUS: "${SCHEDULER_DEFAULT_STATUS:-published}"
+      NEWS_ITEMS_PER_WEBSITE: "${NEWS_ITEMS_PER_WEBSITE:-5}"
+      AI_PROVIDER: "${AI_PROVIDER:-openai}"
+      AI_API_KEY: "${AI_API_KEY:-}"
+      AI_BASE_URL: "${AI_BASE_URL:-https://api.openai.com/v1}"
+      AI_MODEL: "${AI_MODEL:-gpt-4o-mini}"
+      AI_MAX_TOKENS: "${AI_MAX_TOKENS:-0}"
+      AI_TEMPERATURE: "${AI_TEMPERATURE:-0.7}"
     networks:
       - news-net
     depends_on:

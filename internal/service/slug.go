@@ -24,10 +24,11 @@ func cleanSlug(s string) string {
 
 // uniqueSlug menghasilkan slug yang unik di DB, dengan suffix numerik bila tabrakan.
 func (p *Pipeline) uniqueSlug(ctx context.Context, preferred, title string) (string, error) {
-	base := cleanSlug(preferred)
-	if base == "" {
-		base = cleanSlug(title)
+	base := preferred
+	if strings.TrimSpace(base) == "" {
+		base = title
 	}
+	base = cleanSlug(base)
 
 	slug := base
 	for i := 2; ; i++ {

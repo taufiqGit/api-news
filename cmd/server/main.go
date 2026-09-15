@@ -71,16 +71,6 @@ func main() {
 	defer pool.Close()
 	log.Println("✅ database connected")
 
-	// Setup router
-	r := router.Setup(cfg, pool)
-
-	srv := &http.Server{
-		Addr:         ":" + cfg.Server.Port,
-		Handler:      r,
-		ReadTimeout:  cfg.Server.ReadTimeout,
-		WriteTimeout: cfg.Server.WriteTimeout,
-	}
-
 	// --- Scheduler berita (opsional, in-process goroutine) ---
 	var newsScheduler *scheduler.Scheduler
 	if cfg.Scheduler.Enabled {
@@ -119,6 +109,16 @@ func main() {
 		// Scheduler
 		newsScheduler = scheduler.New(cfg.Scheduler, pipeline, websiteRepo, logger)
 		newsScheduler.Start(ctx)
+	}
+
+	// Setup router (admin endpoint butuh referensi scheduler)
+	r := router.Setup(cfg, pool, newsScheduler)
+
+	srv := &http.Server{
+		Addr:         ":" + cfg.Server.Port,
+		Handler:      r,
+		ReadTimeout:  cfg.Server.ReadTimeout,
+		WriteTimeout: cfg.Server.WriteTimeout,
 	}
 
 	// Jalankan server di goroutine

@@ -26,6 +26,10 @@ internal/
 │   └── repository/       → interface repository (kontrak data layer)
 ├── repository/           → implementasi repository (sqlc + pgx)
 ├── usecase/              → business logic (validasi, transformasi)
+├── source/               → adapter sumber berita (Google News RSS / RSS feed)
+├── ai/                   → AI rewriter (OpenAI-compatible, anti-slop)
+├── service/              → orkestrasi pipeline berita (fetch→dedup→rewrite→image→save)
+├── scheduler/            → scheduler in-process (ticker + worker pool)
 ├── handler/              → HTTP handlers (bind request, parse response)
 │   └── response/         → format response API standar
 ├── middleware/           → JWT auth, CORS, role-based access
@@ -49,6 +53,9 @@ db/
 - ✅ Pagination + filter (status, kategori)
 - ✅ Swagger UI docs (interaktif)
 - ✅ Upload gambar via S3 storage (AWS S3, MinIO, R2, DO Spaces)
+- ✅ Scheduler berita otomatis: fetch berita viral/terbaru → AI rewrite → simpan (published)
+- ✅ Integrasi AI (OpenAI-compatible) dengan prompt anti-slop + output JSON
+- ✅ Watermark credit pada gambar hasil unduhan
 - ✅ Graceful shutdown
 - ✅ CORS
 
@@ -187,6 +194,55 @@ curl -X POST http://localhost:8080/api/v1/articles \
 | `S3_SECRET_KEY` | (kosong) | Secret key — kosong = local storage |
 | `S3_USE_SSL` | true | Pakai HTTPS untuk S3 |
 | `S3_PUBLIC_URL` | (kosong) | URL publik CDN (opsional, contoh: https://cdn.deployaja.web.id) |
+| `SCHEDULER_ENABLED` | false | Aktifkan scheduler berita (in-process goroutine) |
+| `SCHEDULER_INTERVAL_MINUTES` | 10 | Interval antar run scheduler (menit) |
+| `SCHEDULER_MAX_CONCURRENCY` | 3 | Maksimum website diproses paralel per run |
+| `SCHEDULER_DEFAULT_STATUS` | published | Status artikel hasil scheduler (published/draft) |
+| `NEWS_ITEMS_PER_WEBSITE` | 5 | Jumlah berita per website per run |
+| `AI_PROVIDER` | openai | Nama provider AI (referensi) |
+| `AI_API_KEY` | (kosong) | API key AI (dari env, jangan hardcode) |
+| `AI_BASE_URL` | https://api.openai.com/v1 | Base URL endpoint OpenAI-compatible |
+| `AI_MODEL` | gpt-4o-mini | Model AI yang dipakai |
+| `AI_MAX_TOKENS` | 0 | Batas token (0 = default provider) |
+| `AI_TEMPERATURE` | 0.7 | Temperatur generasi (≤ 0.7 disarankan) |
+
+## Scheduler Berita Otomatis
+
+Fitur scheduler mengambil berita viral/internasional, mer-rewrite dengan AI, lalu menyimpan artikel baru (status `published`, bahasa Inggris).
+
+**Cara kerja (tiap interval):**
+1. Ambil semua website `is_active = true`.
+2. Untuk tiap website, fetch kandidat dari sumber (Google News RSS + BBC/Guardian/CNN/NPR/Al Jazeera).
+3. Dedup berdasarkan `source_url` (skip artikel yang sudah ada).
+4. Rewrite via AI (prompt anti-slop, output JSON terstruktur).
+5. Jika ada gambar: download → beri watermark credit → upload ke S3.
+6. Simpan artikel (`created_by` = system user, `is_ai_generated = true`).
+7. Catat hasil ke tabel `scheduler_runs`.
+
+**Aktifkan scheduler** — tambahkan ke `.env`:
+
+```bash
+SCHEDULER_ENABLED=true
+SCHEDULER_INTERVAL_MINUTES=10
+SCHEDULER_MAX_CONCURRENCY=3
+SCHEDULER_DEFAULT_STATUS=published
+NEWS_ITEMS_PER_WEBSITE=5
+
+AI_API_KEY=sk-...
+AI_BASE_URL=https://api.openai.com/v1
+AI_MODEL=gpt-4o-mini
+AI_TEMPERATURE=0.7
+```
+
+> Scheduler berjalan **in-process** (di dalam server), bukan worker terpisah.
+> Bila `SCHEDULER_ENABLED=false` (default), server tetap jalan normal tanpa scheduler.
+
+**Admin endpoints (role `admin`):**
+
+| Method | Path | Deskripsi |
+|---|---|---|
+| POST | `/api/v1/admin/scheduler/run` | Trigger manual (async, balas 202) |
+| GET | `/api/v1/admin/scheduler/runs?page=1&limit=20` | Riwayat run scheduler |
 
 ## Upload Gambar
 
@@ -235,19 +291,25 @@ make tidy       # go mod tidy
 users (id, name, email, password, role, avatar_url, is_active)
 categories (id, name, slug, description, parent_id, is_active)  ← parent_id untuk hierarki
 tags (id, name, slug)
-articles (id, title, slug, excerpt, content, cover_image, status, view_count, published_at, created_by, category_id)
+websites (id, name, slug, domain, description, logo_url, is_active)  ← target publikasi (multi-tenant)
+articles (id, title, slug, excerpt, content, cover_image, status, view_count, published_at, created_by, category_id, website_id)
+  + source_url, source_type, source_name, source_hash, is_ai_generated, image_credit, image_source_url, image_license
 article_tags (article_id, tag_id)  ← many-to-many
 comments (id, article_id, user_id, parent_id, content, is_approved)  ← parent_id untuk reply
+scheduler_runs (id, website_id, status, started_at, finished_at, articles_created/skipped/failed, error)  ← audit scheduler
 ```
 
 ## Roadmap Pengembangan
 
+- [x] Scheduler berita otomatis (fetch → AI rewrite → simpan)
+- [x] Integrasi AI (OpenAI-compatible)
+- [x] Upload gambar + watermark (S3/local storage)
 - [ ] Refresh token / logout
-- [ ] Upload gambar (cover, avatar) — S3/local storage
 - [ ] Search artikel (full-text search / trigram)
 - [ ] Slug otomatis dari title
 - [ ] Rate limiting
-- [ ] Swagger/OpenAPI docs
+- [ ] Swagger/OpenAPI docs (regenerate berkala)
 - [ ] Caching (Redis) untuk artikel populer
 - [ ] Webhook/subscription newsletter
 - [ ] Audit log
+```

@@ -13,6 +13,7 @@ import (
 	"github.com/taufiqgit/news-api/internal/handler"
 	"github.com/taufiqgit/news-api/internal/middleware"
 	"github.com/taufiqgit/news-api/internal/repository"
+	"github.com/taufiqgit/news-api/internal/scheduler"
 	"github.com/taufiqgit/news-api/internal/storage"
 	"github.com/taufiqgit/news-api/internal/usecase"
 
@@ -28,8 +29,9 @@ func uploadDir() string {
 	return filepath.Join(wd, "uploads")
 }
 
-// Setup membangun seluruh router dengan dependency injection
-func Setup(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
+// Setup membangun seluruh router dengan dependency injection.
+// sched boleh nil (scheduler disabled) — endpoint trigger manual akan 503.
+func Setup(cfg *config.Config, pool *pgxpool.Pool, sched *scheduler.Scheduler) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
@@ -158,6 +160,15 @@ func Setup(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 		websiteWrite.POST("", websiteHandler.Create)
 		websiteWrite.PUT("/:id", websiteHandler.Update)
 		websiteWrite.DELETE("/:id", websiteHandler.Delete)
+	}
+
+	// Admin (scheduler berita)
+	schedulerRunRepo := repository.NewSchedulerRunRepository(pool)
+	schedulerHandler := handler.NewSchedulerHandler(sched, schedulerRunRepo)
+	adminGroup := api.Group("/admin", auth, requireAdmin)
+	{
+		adminGroup.POST("/scheduler/run", schedulerHandler.Run)
+		adminGroup.GET("/scheduler/runs", schedulerHandler.ListRuns)
 	}
 
 	return r

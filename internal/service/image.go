@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -49,7 +50,28 @@ func (p *Pipeline) downloadAndUpload(ctx context.Context, imageURL, credit, site
 }
 
 // download mengunduh gambar dan mengembalikan bytes + content type.
+// Retry 1x untuk error transien (network / status 5xx).
 func (p *Pipeline) download(ctx context.Context, imageURL string) ([]byte, string, error) {
+	var lastErr error
+	for attempt := 0; attempt < 2; attempt++ {
+		data, contentType, err := p.downloadOnce(ctx, imageURL)
+		if err == nil {
+			return data, contentType, nil
+		}
+		lastErr = err
+
+		// Retry hanya untuk error transien (5xx / network); 4xx dianggap permanen.
+		if !isTransient(err) {
+			return nil, "", err
+		}
+		p.logger.Warn("image download retry", "url", imageURL, "attempt", attempt+1, "error", err)
+		time.Sleep(500 * time.Millisecond)
+	}
+	return nil, "", lastErr
+}
+
+// downloadOnce melakukan satu kali HTTP GET gambar.
+func (p *Pipeline) downloadOnce(ctx context.Context, imageURL string) ([]byte, string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, imageURL, nil)
 	if err != nil {
 		return nil, "", fmt.Errorf("service: build image request: %w", err)
@@ -58,17 +80,21 @@ func (p *Pipeline) download(ctx context.Context, imageURL string) ([]byte, strin
 
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
-		return nil, "", fmt.Errorf("service: download image: %w", err)
+		return nil, "", &transientError{fmt.Errorf("service: download image: %w", err)}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, "", fmt.Errorf("service: image %s returned status %d", imageURL, resp.StatusCode)
+		err := fmt.Errorf("service: image %s returned status %d", imageURL, resp.StatusCode)
+		if resp.StatusCode >= 500 {
+			return nil, "", &transientError{err}
+		}
+		return nil, "", err
 	}
 
 	data, err := io.ReadAll(io.LimitReader(resp.Body, maxImageDownload+1))
 	if err != nil {
-		return nil, "", fmt.Errorf("service: read image: %w", err)
+		return nil, "", &transientError{fmt.Errorf("service: read image: %w", err)}
 	}
 	if len(data) > maxImageDownload {
 		return nil, "", fmt.Errorf("service: image too large (%d bytes)", len(data))
@@ -84,6 +110,18 @@ func (p *Pipeline) download(ctx context.Context, imageURL string) ([]byte, strin
 	}
 
 	return data, contentType, nil
+}
+
+// transientError menandai error yang layak di-retry.
+type transientError struct{ err error }
+
+func (e *transientError) Error() string { return e.err.Error() }
+func (e *transientError) Unwrap() error { return e.err }
+
+// isTransient mengecek apakah error merupakan transientError.
+func isTransient(err error) bool {
+	var te *transientError
+	return errors.As(err, &te)
 }
 
 // imageFilename menurunkan nama file dari URL + content type.
