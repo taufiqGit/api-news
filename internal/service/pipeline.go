@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -16,6 +17,7 @@ import (
 	"github.com/taufiqgit/news-api/internal/ai"
 	"github.com/taufiqgit/news-api/internal/domain/entity"
 	"github.com/taufiqgit/news-api/internal/domain/repository"
+	sqlrepo "github.com/taufiqgit/news-api/internal/repository"
 	"github.com/taufiqgit/news-api/internal/source"
 	"github.com/taufiqgit/news-api/internal/storage"
 )
@@ -129,6 +131,12 @@ func (p *Pipeline) ProcessWebsite(ctx context.Context, website entity.Website) (
 
 	for _, it := range items.items {
 		if err := p.processItem(ctx, website, it); err != nil {
+			// Duplicate hasil race: anggap skipped, bukan failed.
+			if errors.Is(err, errDupSkipped) {
+				p.logger.Info("skip duplicate article", "url", it.URL)
+				res.Skipped++
+				continue
+			}
 			p.logger.Error("process item", "url", it.URL, "error", err)
 			res.Failed++
 			runErr = err
@@ -216,6 +224,10 @@ func (p *Pipeline) selectSources() []source.NewsSource {
 	return srcs
 }
 
+// errDupSkipped adalah sentinel internal: proses item berhasil di-skip karena
+// artikel dengan source_url yang sama sudah dibuat (race/race dedup).
+var errDupSkipped = errors.New("duplicate article skipped")
+
 // processItem memproses satu item sumber menjadi artikel tersimpan.
 func (p *Pipeline) processItem(ctx context.Context, website entity.Website, it entity.SourceItem) error {
 	// 1) Rewrite via AI.
@@ -296,6 +308,12 @@ func (p *Pipeline) processItem(ctx context.Context, website entity.Website, it e
 
 	created, err := p.articleRepo.Create(ctx, article)
 	if err != nil {
+		// Duplicate (source_url) akibat race antar website paralel / overlap feed.
+		// Bukan kegagalan nyata — hitung sebagai skip (dedup) dan lanjut.
+		if errors.Is(err, sqlrepo.ErrDuplicateArticle) {
+			p.logger.Info("article already exists (dup)", "url", it.URL, "slug", slug)
+			return errDupSkipped
+		}
 		return fmt.Errorf("service: create article: %w", err)
 	}
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -48,6 +49,9 @@ func (r *articleRepository) Create(ctx context.Context, a entity.Article) (*enti
 		ImageLicense:   ptrToText(a.ImageLicense),
 	})
 	if err != nil {
+		if isDuplicateURLViolation(err) {
+			return nil, ErrDuplicateArticle
+		}
 		return nil, err
 	}
 	return toArticleEntity(row), nil
@@ -245,6 +249,17 @@ func (r *articleRepository) ListArticleTags(ctx context.Context, articleID uuid.
 		items = append(items, *toTagEntity(row))
 	}
 	return items, nil
+}
+
+// isDuplicateURLViolation mengecek apakah error merupakan pelanggaran unique
+// constraint pada source_url (SQLSTATE 23505). Hanya ini yang dianggap
+// "duplicate skip" — slug violation tetap surfaced sebagai error.
+func isDuplicateURLViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
+		return false
+	}
+	return pgErr.ConstraintName == "idx_articles_source_url"
 }
 
 // --- Mappers ---

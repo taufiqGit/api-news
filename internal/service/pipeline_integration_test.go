@@ -13,6 +13,7 @@ import (
 	"github.com/taufiqgit/news-api/internal/domain/entity"
 	domainrepo "github.com/taufiqgit/news-api/internal/domain/repository"
 	"github.com/taufiqgit/news-api/internal/repository"
+	sqlrepo "github.com/taufiqgit/news-api/internal/repository"
 	"github.com/taufiqgit/news-api/internal/source"
 	"github.com/taufiqgit/news-api/internal/storage"
 )
@@ -402,6 +403,43 @@ func TestProcessWebsite_NoSources(t *testing.T) {
 
 	if _, err := p.ProcessWebsite(context.Background(), website); err == nil {
 		t.Fatalf("ProcessWebsite harus error ketika tidak ada sumber")
+	}
+}
+
+func TestProcessWebsite_DuplicateDBError(t *testing.T) {
+	// Simulasi race: GetExistingSourceURLs tidak menemukan URL karena belum
+	// di-commit, tapi INSERT langsung melanggar unique constraint
+	// (idx_articles_source_url). Pipeline harus memperlakukannya sebagai skip.
+	website := entity.Website{ID: uuid.New(), Name: "Example News", Slug: "example-news"}
+
+	src := &mockSource{name: "mock-news", items: []entity.SourceItem{
+		{Title: "Race", URL: "https://example.com/race", Content: "race body", SourceName: "X"},
+	}}
+	rw := &mockRewriter{result: &entity.RewriteResult{Title: "Race", Slug: "race-1", Content: "body"}}
+	art := &mockArticleRepo{createErr: sqlrepo.ErrDuplicateArticle}
+	tag := &mockTagRepo{}
+	cat := &mockCategoryRepo{}
+	run := &mockRunRepo{}
+	st := &mockStorage{}
+
+	p := newTestPipeline(rw, art, tag, cat, run, st, src)
+
+	res, err := p.ProcessWebsite(context.Background(), website)
+	if err != nil {
+		t.Fatalf("ProcessWebsite harus tidak error pada duplicate (race)")
+	}
+	if res.Created != 0 || res.Skipped != 1 || res.Failed != 0 {
+		t.Fatalf("result = %+v, want created=0 skipped=1 failed=0 (duplicate=race-skip)", res)
+	}
+	if len(art.created) != 0 {
+		t.Fatalf("created articles = %d, want 0", len(art.created))
+	}
+	// Run harus success (bukan failed), karena ini dedup, bukan error.
+	if len(run.finish) != 1 {
+		t.Fatalf("finish calls = %d, want 1", len(run.finish))
+	}
+	if f := run.finish[0]; f.status != entity.RunStatusSuccess || f.skipped != 1 {
+		t.Fatalf("finish = %+v, want success skipped=1", f)
 	}
 }
 

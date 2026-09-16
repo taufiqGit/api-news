@@ -10,6 +10,11 @@ import (
 
 var ErrNotFound = errors.New("record not found")
 
+// ErrDuplicateArticle dikembalikan ketika INSERT artikel melanggar unique
+// constraint (mis. source_url sudah ada akibat race antar website paralel
+// atau overlap feed RSS). Pemanggil scheduler memperlakukan ini sebagai skip.
+var ErrDuplicateArticle = errors.New("duplicate article")
+
 // --- pgtype → *T helpers ---
 
 func textToPtr(t pgtype.Text) *string {
