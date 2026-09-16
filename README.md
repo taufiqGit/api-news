@@ -193,7 +193,7 @@ curl -X POST http://localhost:8080/api/v1/articles \
 | `S3_ACCESS_KEY` | (kosong) | Access key — kosong = local storage |
 | `S3_SECRET_KEY` | (kosong) | Secret key — kosong = local storage |
 | `S3_USE_SSL` | true | Pakai HTTPS untuk S3 |
-| `S3_PUBLIC_URL` | (kosong) | URL publik CDN (opsional, contoh: https://cdn.deployaja.web.id) |
+| `S3_PUBLIC_URL` | (kosong) | Base URL publik **tanpa bucket** (opsional; contoh NOS: `https://nos.jkt-1.neo.id` → `https://nos.jkt-1.neo.id/news/{key}`) |
 | `SCHEDULER_ENABLED` | false | Aktifkan scheduler berita (in-process goroutine) |
 | `SCHEDULER_INTERVAL_MINUTES` | 10 | Interval antar run scheduler (menit) |
 | `SCHEDULER_MAX_CONCURRENCY` | 3 | Maksimum website diproses paralel per run |

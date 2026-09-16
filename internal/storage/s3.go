@@ -116,17 +116,19 @@ func (s *s3Storage) Delete(ctx context.Context, key string) error {
 	return s.client.RemoveObject(ctx, s.cfg.Bucket, key, minio.RemoveObjectOptions{})
 }
 
-// URL mengembalikan URL publik file. Jika S3_PUBLIC_URL di-set, pakai itu.
+// URL mengembalikan URL publik path-style: {base}/{bucket}/{key}.
+// S3_PUBLIC_URL, jika diisi, harus berupa base endpoint/CDN tanpa nama bucket,
+// misalnya https://nos.jkt-1.neo.id (bukan https://news.nos.jkt-1.neo.id).
 func (s *s3Storage) URL(key string) string {
-	if s.cfg.PublicURL != "" {
-		return strings.TrimSuffix(s.cfg.PublicURL, "/") + "/" + key
+	baseURL := strings.TrimSuffix(s.cfg.PublicURL, "/")
+	if baseURL == "" {
+		scheme := "http"
+		if s.cfg.UseSSL {
+			scheme = "https"
+		}
+		baseURL = fmt.Sprintf("%s://%s", scheme, s.cfg.Endpoint)
 	}
-	// Default: URL dari endpoint S3
-	scheme := "http"
-	if s.cfg.UseSSL {
-		scheme = "https"
-	}
-	return fmt.Sprintf("%s://%s/%s/%s", scheme, s.cfg.Endpoint, s.cfg.Bucket, key)
+	return fmt.Sprintf("%s/%s/%s", baseURL, s.cfg.Bucket, strings.TrimPrefix(key, "/"))
 }
 
 var _ Storage = (*s3Storage)(nil)

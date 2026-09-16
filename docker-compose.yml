@@ -23,7 +23,7 @@ services:
       S3_ACCESS_KEY: "${S3_ACCESS_KEY:-}"
       S3_SECRET_KEY: "${S3_SECRET_KEY:-}"
       S3_USE_SSL: "${S3_USE_SSL:-true}"
-      S3_PUBLIC_URL: "${S3_PUBLIC_URL:-https://news.nos.jkt-1.neo.id}"
+      S3_PUBLIC_URL: "${S3_PUBLIC_URL:-https://nos.jkt-1.neo.id}"
       SCHEDULER_ENABLED: "${SCHEDULER_ENABLED:-false}"
       SCHEDULER_INTERVAL_MINUTES: "${SCHEDULER_INTERVAL_MINUTES:-10}"
       SCHEDULER_MAX_CONCURRENCY: "${SCHEDULER_MAX_CONCURRENCY:-3}"
