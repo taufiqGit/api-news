@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"mime/multipart"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -13,7 +14,6 @@ import (
 	"github.com/taufiqgit/news-api/internal/domain/entity"
 	domainrepo "github.com/taufiqgit/news-api/internal/domain/repository"
 	"github.com/taufiqgit/news-api/internal/repository"
-	sqlrepo "github.com/taufiqgit/news-api/internal/repository"
 	"github.com/taufiqgit/news-api/internal/source"
 	"github.com/taufiqgit/news-api/internal/storage"
 )
@@ -73,14 +73,22 @@ type mockArticleRepo struct {
 	existingURLs []string
 	dedupErr     error
 	createErr    error
+	createErrs   []error // urutan error per pemanggilan Create (dipakai lebih dulu)
 	slugErr      error
 	slugTaken    map[string]bool
 
-	created  []entity.Article
-	attached map[uuid.UUID][]uuid.UUID
+	createCalls int
+	created     []entity.Article
+	attached    map[uuid.UUID][]uuid.UUID
 }
 
 func (m *mockArticleRepo) Create(ctx context.Context, a entity.Article) (*entity.Article, error) {
+	m.createCalls++
+	if len(m.createErrs) > 0 {
+		err := m.createErrs[0]
+		m.createErrs = m.createErrs[1:]
+		return nil, err
+	}
 	if m.createErr != nil {
 		return nil, m.createErr
 	}
@@ -416,7 +424,7 @@ func TestProcessWebsite_DuplicateDBError(t *testing.T) {
 		{Title: "Race", URL: "https://example.com/race", Content: "race body", SourceName: "X"},
 	}}
 	rw := &mockRewriter{result: &entity.RewriteResult{Title: "Race", Slug: "race-1", Content: "body"}}
-	art := &mockArticleRepo{createErr: sqlrepo.ErrDuplicateArticle}
+	art := &mockArticleRepo{createErr: repository.ErrDuplicateArticle}
 	tag := &mockTagRepo{}
 	cat := &mockCategoryRepo{}
 	run := &mockRunRepo{}
@@ -440,6 +448,108 @@ func TestProcessWebsite_DuplicateDBError(t *testing.T) {
 	}
 	if f := run.finish[0]; f.status != entity.RunStatusSuccess || f.skipped != 1 {
 		t.Fatalf("finish = %+v, want success skipped=1", f)
+	}
+}
+
+func TestProcessWebsite_SlugRaceRetry(t *testing.T) {
+	// Simulasi race slug: pre-check uniqueSlug lolos, tapi INSERT pertama kena
+	// articles_slug_key → pipeline harus retry dengan slug baru (suffix acak).
+	website := entity.Website{ID: uuid.New(), Name: "Example News", Slug: "example-news"}
+
+	src := &mockSource{name: "mock-news", items: []entity.SourceItem{
+		{Title: "Slug race", URL: "https://example.com/slug-race", Content: "body", SourceName: "X"},
+	}}
+	rw := &mockRewriter{result: &entity.RewriteResult{Title: "Slug race", Slug: "slug-race", Content: "body"}}
+	art := &mockArticleRepo{createErrs: []error{repository.ErrSlugTaken}} // gagal 1x, lalu sukses
+	tag := &mockTagRepo{}
+	cat := &mockCategoryRepo{}
+	run := &mockRunRepo{}
+	st := &mockStorage{}
+
+	p := newTestPipeline(rw, art, tag, cat, run, st, src)
+
+	res, err := p.ProcessWebsite(context.Background(), website)
+	if err != nil {
+		t.Fatalf("ProcessWebsite error: %v", err)
+	}
+	if res.Created != 1 || res.Skipped != 0 || res.Failed != 0 {
+		t.Fatalf("result = %+v, want created=1 skipped=0 failed=0", res)
+	}
+	if art.createCalls != 2 {
+		t.Fatalf("create calls = %d, want 2 (1 gagal race + 1 retry)", art.createCalls)
+	}
+	if len(art.created) != 1 {
+		t.Fatalf("created articles = %d, want 1", len(art.created))
+	}
+	slug := art.created[0].Slug
+	if !strings.HasPrefix(slug, "slug-race-") || len(slug) != len("slug-race-")+4 {
+		t.Fatalf("slug hasil retry = %q, want prefix slug-race- + 4 hex chars", slug)
+	}
+	if len(run.finish) != 1 || run.finish[0].status != entity.RunStatusSuccess || run.finish[0].created != 1 {
+		t.Fatalf("run finish salah: %+v", run.finish)
+	}
+}
+
+func TestProcessWebsite_SlugRaceThenDupSkips(t *testing.T) {
+	// Skenario dari log produksi: race slug duluan, ternyata artikelnya sama —
+	// retry insert berikutnya kena idx_articles_source_url → skip (bukan failed).
+	website := entity.Website{ID: uuid.New(), Name: "Example News", Slug: "example-news"}
+
+	src := &mockSource{name: "mock-news", items: []entity.SourceItem{
+		{Title: "Both race", URL: "https://example.com/both-race", Content: "body", SourceName: "X"},
+	}}
+	rw := &mockRewriter{result: &entity.RewriteResult{Title: "Both race", Slug: "both-race", Content: "body"}}
+	art := &mockArticleRepo{createErrs: []error{repository.ErrSlugTaken, repository.ErrDuplicateArticle}}
+	tag := &mockTagRepo{}
+	cat := &mockCategoryRepo{}
+	run := &mockRunRepo{}
+	st := &mockStorage{}
+
+	p := newTestPipeline(rw, art, tag, cat, run, st, src)
+
+	res, err := p.ProcessWebsite(context.Background(), website)
+	if err != nil {
+		t.Fatalf("ProcessWebsite harus tidak error: %v", err)
+	}
+	if res.Created != 0 || res.Skipped != 1 || res.Failed != 0 {
+		t.Fatalf("result = %+v, want created=0 skipped=1 failed=0", res)
+	}
+	if art.createCalls != 2 {
+		t.Fatalf("create calls = %d, want 2", art.createCalls)
+	}
+	if len(run.finish) != 1 || run.finish[0].status != entity.RunStatusSuccess || run.finish[0].skipped != 1 {
+		t.Fatalf("run finish salah: %+v", run.finish)
+	}
+}
+
+func TestProcessWebsite_SlugRaceExhaustedFails(t *testing.T) {
+	// ErrSlugTaken terus-menerus → gagal setelah retry maksimal (3 percobaan).
+	website := entity.Website{ID: uuid.New(), Name: "Example News", Slug: "example-news"}
+
+	src := &mockSource{name: "mock-news", items: []entity.SourceItem{
+		{Title: "Always taken", URL: "https://example.com/taken", Content: "body", SourceName: "X"},
+	}}
+	rw := &mockRewriter{result: &entity.RewriteResult{Title: "Always taken", Slug: "always-taken", Content: "body"}}
+	art := &mockArticleRepo{createErr: repository.ErrSlugTaken} // setiap Create gagal
+	tag := &mockTagRepo{}
+	cat := &mockCategoryRepo{}
+	run := &mockRunRepo{}
+	st := &mockStorage{}
+
+	p := newTestPipeline(rw, art, tag, cat, run, st, src)
+
+	res, err := p.ProcessWebsite(context.Background(), website)
+	if err == nil {
+		t.Fatal("ProcessWebsite harus error setelah retry habis")
+	}
+	if res.Created != 0 || res.Skipped != 0 || res.Failed != 1 {
+		t.Fatalf("result = %+v, want created=0 skipped=0 failed=1", res)
+	}
+	if art.createCalls != 3 {
+		t.Fatalf("create calls = %d, want 3 (maks attempt)", art.createCalls)
+	}
+	if len(run.finish) != 1 || run.finish[0].status != entity.RunStatusFailed || run.finish[0].failed != 1 {
+		t.Fatalf("run finish salah: %+v", run.finish)
 	}
 }
 

@@ -53,6 +53,8 @@ func (h *ArticleHandler) Create(c *gin.Context) {
 		switch {
 		case errors.Is(err, usecase.ErrInvalidStatus):
 			response.BadRequest(c, "invalid status", nil)
+		case errors.Is(err, repository.ErrSlugTaken):
+			response.BadRequest(c, "slug already used", nil)
 		default:
 			response.InternalError(c, "failed to create article")
 		}

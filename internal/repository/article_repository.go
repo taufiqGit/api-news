@@ -49,10 +49,7 @@ func (r *articleRepository) Create(ctx context.Context, a entity.Article) (*enti
 		ImageLicense:   ptrToText(a.ImageLicense),
 	})
 	if err != nil {
-		if isDuplicateURLViolation(err) {
-			return nil, ErrDuplicateArticle
-		}
-		return nil, err
+		return nil, classifyCreateError(err)
 	}
 	return toArticleEntity(row), nil
 }
@@ -251,15 +248,31 @@ func (r *articleRepository) ListArticleTags(ctx context.Context, articleID uuid.
 	return items, nil
 }
 
-// isDuplicateURLViolation mengecek apakah error merupakan pelanggaran unique
-// constraint pada source_url (SQLSTATE 23505). Hanya ini yang dianggap
-// "duplicate skip" — slug violation tetap surfaced sebagai error.
-func isDuplicateURLViolation(err error) bool {
+// classifyCreateError memetakan pelanggaran unique constraint INSERT artikel
+// ke error domain yang bisa ditangani pemanggil:
+//   - idx_articles_source_url → ErrDuplicateArticle (dedup, di-skip scheduler)
+//   - articles_slug_key       → ErrSlugTaken (di-retry dengan slug baru)
+func classifyCreateError(err error) error {
+	switch {
+	case isConstraintViolation(err, "idx_articles_source_url"):
+		return ErrDuplicateArticle
+	case isConstraintViolation(err, "articles_slug_key"):
+		return ErrSlugTaken
+	default:
+		return err
+	}
+}
+
+// isConstraintViolation mengecek apakah error merupakan pelanggaran unique
+// constraint tertentu (SQLSTATE 23505). Nama bisa berupa nama constraint
+// (articles_slug_key) maupun nama unique index (idx_articles_source_url) —
+// PostgreSQL melaporkan keduanya lewat field ConstraintName.
+func isConstraintViolation(err error, name string) bool {
 	var pgErr *pgconn.PgError
 	if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
 		return false
 	}
-	return pgErr.ConstraintName == "idx_articles_source_url"
+	return pgErr.ConstraintName == name
 }
 
 // --- Mappers ---

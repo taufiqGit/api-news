@@ -228,6 +228,40 @@ func (p *Pipeline) selectSources() []source.NewsSource {
 // artikel dengan source_url yang sama sudah dibuat (race/race dedup).
 var errDupSkipped = errors.New("duplicate article skipped")
 
+// createArticleWithSlugRetry menyimpan artikel dengan retry race-safe.
+// uniqueSlug melakukan pre-check (SELECT), tapi dua worker paralel bisa
+// lolos pre-check hampir bersamaan lalu INSERT keduanya — salah satunya kena
+// articles_slug_key (SQLSTATE 23505). Saat itu terjadi, tambahkan suffix
+// pendek acak dan coba lagi (maks 3 percobaan). Bila ternyata artikelnya
+// memang sama (source_url sudah diambil website lain), retry berikutnya
+// mengembalikan ErrDuplicateArticle dan item di-skip oleh pemanggil.
+func (p *Pipeline) createArticleWithSlugRetry(ctx context.Context, article entity.Article) (*entity.Article, error) {
+	const maxAttempts = 3
+	for attempt := 1; ; attempt++ {
+		created, err := p.articleRepo.Create(ctx, article)
+		if err == nil {
+			return created, nil
+		}
+		if !errors.Is(err, sqlrepo.ErrSlugTaken) || attempt >= maxAttempts {
+			return nil, err
+		}
+		p.logger.Warn("slug race, retrying with new suffix", "slug", article.Slug, "attempt", attempt)
+		article.Slug = slugWithRaceSuffix(article.Slug)
+	}
+}
+
+// slugWithRaceSuffix menambahkan suffix pendek acak pada slug sebagai fallback
+// race (tahan terhadap retry paralel yang memilih suffix sama). Panjang dijaga
+// <= 550 karakter sesuai kolom slug VARCHAR(550).
+func slugWithRaceSuffix(slug string) string {
+	const maxSlugLen = 550
+	suffix := "-" + uuid.NewString()[:4]
+	if len(slug)+len(suffix) > maxSlugLen {
+		slug = slug[:maxSlugLen-len(suffix)]
+	}
+	return slug + suffix
+}
+
 // processItem memproses satu item sumber menjadi artikel tersimpan.
 func (p *Pipeline) processItem(ctx context.Context, website entity.Website, it entity.SourceItem) error {
 	// 1) Rewrite via AI.
@@ -306,12 +340,12 @@ func (p *Pipeline) processItem(ctx context.Context, website entity.Website, it e
 		ImageLicense:   imageLicense,
 	}
 
-	created, err := p.articleRepo.Create(ctx, article)
+	created, err := p.createArticleWithSlugRetry(ctx, article)
 	if err != nil {
 		// Duplicate (source_url) akibat race antar website paralel / overlap feed.
 		// Bukan kegagalan nyata — hitung sebagai skip (dedup) dan lanjut.
 		if errors.Is(err, sqlrepo.ErrDuplicateArticle) {
-			p.logger.Info("article already exists (dup)", "url", it.URL, "slug", slug)
+			p.logger.Info("article already exists (dup)", "url", it.URL, "slug", article.Slug)
 			return errDupSkipped
 		}
 		return fmt.Errorf("service: create article: %w", err)

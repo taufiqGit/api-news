@@ -15,6 +15,12 @@ var ErrNotFound = errors.New("record not found")
 // atau overlap feed RSS). Pemanggil scheduler memperlakukan ini sebagai skip.
 var ErrDuplicateArticle = errors.New("duplicate article")
 
+// ErrSlugTaken dikembalikan ketika INSERT artikel melanggar unique constraint
+// articles_slug_key — pre-check slug lolos tapi INSERT kalah race dengan
+// worker paralel, atau slug bentrok dengan artikel lain. Pemanggil scheduler
+// me-retry dengan slug baru.
+var ErrSlugTaken = errors.New("article slug already taken")
+
 // --- pgtype → *T helpers ---
 
 func textToPtr(t pgtype.Text) *string {

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -52,5 +53,32 @@ func TestStrPtr(t *testing.T) {
 	}
 	if got := strPtr("hi"); got == nil || *got != "hi" {
 		t.Fatalf("strPtr(\"hi\") salah: %v", got)
+	}
+}
+
+func TestSlugWithRaceSuffix(t *testing.T) {
+	base := "houthi-attacks-threaten-saudi-oil"
+	a := slugWithRaceSuffix(base)
+	b := slugWithRaceSuffix(base)
+
+	// Prefix asli tetap utuh + suffix pendek (4 hex).
+	if !strings.HasPrefix(a, base+"-") {
+		t.Fatalf("suffix hilangkan prefix: %q", a)
+	}
+	if len(a) != len(base)+5 {
+		t.Fatalf("panjang slug = %d, want %d", len(a), len(base)+5)
+	}
+	// Dua panggilan menghasilkan suffix berbeda (tahan retry paralel).
+	if a == b {
+		t.Fatalf("suffix harus acak: %q == %q", a, b)
+	}
+	// Slug panjang dipotong agar total <= 550 (kolom VARCHAR(550)).
+	long := strings.Repeat("a", 600)
+	got := slugWithRaceSuffix(long)
+	if len(got) != 550 {
+		t.Fatalf("panjang slug terpotong = %d, want 550", len(got))
+	}
+	if len(slugWithRaceSuffix("")) != 5 {
+		t.Fatalf("slug kosong harus jadi suffix saja: %q", slugWithRaceSuffix(""))
 	}
 }
