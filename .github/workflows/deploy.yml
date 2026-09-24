@@ -1,0 +1,10 @@
+name: DEployyy
+
+on:
+  push:
+    branches:
+      - main
+
+permission:
+  contents: read
+  package: write
