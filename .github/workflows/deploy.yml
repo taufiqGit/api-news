@@ -12,3 +12,12 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+
+
+jobs:
+  madang:
+    runs-on: ubuntu-latest
+    steps:
+      - name: CRIT
+        run: echo "CRIT"
+        shell: bash
