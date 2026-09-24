@@ -15,9 +15,16 @@ env:
 
 
 jobs:
-  madang:
+  test:
     runs-on: ubuntu-latest
     steps:
-      - name: CRIT
-        run: echo "CRIT"
-        shell: bash
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup GO
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: go.mod
+
+      - name: test
+        run: go test ./...
