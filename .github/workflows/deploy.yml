@@ -53,5 +53,5 @@ jobs:
           context: .
           push: true
           tags: |
-              ghcr.io/${IMAGE_NAME_LOWER}:latest
-              ghcr.io/${IMAGE_NAME_LOWER}:${{ github.sha }}
+              ghcr.io/${{ env.IMAGE_NAME_LOWER }}:latest
+              ghcr.io/${{ env.IMAGE_NAME_LOWER }}:${{ github.sha }}
