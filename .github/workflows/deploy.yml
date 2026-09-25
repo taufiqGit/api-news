@@ -44,10 +44,14 @@ jobs:
           password: ${{ secrets.GHCR_TOKEN }}
           registry: ghcr.io
 
+      - name: Set lowercase image name
+        run: echo "IMAGE_NAME_LOWER=${IMAGE_NAME,,}" >> $GITHUB_ENV
+
       - name: Build and push image
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
           tags: |
-              ghcr.io/${{ github.repository }}:latest
+              ghcr.io/${IMAGE_NAME_LOWER}:latest
+              ghcr.io/${IMAGE_NAME_LOWER}:${{ github.sha }}
