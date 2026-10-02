@@ -70,3 +70,5 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             echo "Deploy to server"
+            pwd
+            ls
