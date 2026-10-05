@@ -70,5 +70,6 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             echo "Deploy to server"
+            cd /opt/api-news
             pwd
             ls
