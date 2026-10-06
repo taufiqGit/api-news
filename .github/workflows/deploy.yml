@@ -79,3 +79,4 @@ jobs:
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u taufiqGit --password-stdin
 
             docker compose up -d news-postgres
+            
