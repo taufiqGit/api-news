@@ -1,7 +1,7 @@
 services:
   news-api:
     build: .
-    container_name: news-api-app
+    image: ghcr.io/taufiqgit/api-news:${IMAGE_TAG:-
     restart: unless-stopped
     ports:
       - "8080:8080"

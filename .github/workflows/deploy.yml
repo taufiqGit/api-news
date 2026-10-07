@@ -56,6 +56,16 @@ jobs:
               ghcr.io/${{ env.IMAGE_NAME_LOWER }}:latest
               ghcr.io/${{ env.IMAGE_NAME_LOWER }}:${{ github.sha }}
 
+      - name: Build and push migrations image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile.migrations
+          push: true
+          tags: |
+              ghcr.io/${{ env.IMAGE_NAME_LOWER }}-migrations:latest
+              ghcr.io/${{ env.IMAGE_NAME_LOWER }}-migrations:${{ github.sha }}
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -69,14 +79,35 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
-            echo "Deploy to server"
+            set -e
+
             cd ${{ secrets.SERVER_PATH }}
-            pwd
-            ls
 
             export IMAGE_TAG=${{ github.sha }}
+            export IMAGE_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
 
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u taufiqGit --password-stdin
 
             docker compose up -d news-postgres
+
+            until docker exec news-postgres pg_isready -U news -d news_db >/dev/null 2>&1; do
+              sleep 2
+            done
+
+            set -a
+            . ./.env
+            set +a
+
+            docker run --rm \
+              --network news-net \
+              ${IMAGE_REPO}-migrations:${IMAGE_TAG} \
+              -path=/migrations \
+              -database="postgres://news:${POSTGRES_PASSWORD}@news-postgres:5432/news_db?sslmode=disable" \
+              up
+
+            docker pull ${IMAGE_REPO}:${IMAGE_TAG}
+
+            docker compose up -d --no-build news-api
+
+            docker image prune -af
             
