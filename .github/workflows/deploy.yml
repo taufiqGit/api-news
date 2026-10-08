@@ -90,11 +90,11 @@ jobs:
             echo "${{ secrets.GHCR_TOKEN }}" 
             docker login ghcr.io -u taufiqGit --password-stdin <<< "${{ secrets.GHCR_TOKEN }}"
 
-            # docker compose up -d news-postgres
+            docker compose up -d news-postgres
 
-            # until docker exec news-postgres pg_isready -U news -d news_db >/dev/null 2>&1; do
-            #   sleep 2
-            # done
+            until docker exec news-postgres pg_isready -U news -d news_db >/dev/null 2>&1; do
+              sleep 2
+            done
 
             # set -a
             # . ./.env
