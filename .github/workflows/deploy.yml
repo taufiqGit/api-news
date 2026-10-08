@@ -100,9 +100,9 @@ jobs:
             . ./.env
             set +a
 
-            echo "${IMAGE_TAG}-migrations: ${IMAGE_TAG} - cipp"
+            echo "${IMAGE_TAG}-migrations: ${IMAGE_TAG} ${github.repository} - cipp"
 
-            docker pull ${IMAGE_REPO}-migrations:${IMAGE_TAG}
+            # docker pull ${IMAGE_REPO}-migrations:${IMAGE_TAG}
 
             # docker run --rm \
             #   --network news-net \
