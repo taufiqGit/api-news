@@ -57,6 +57,7 @@ services:
 
 networks:
   news-net:
+    name: news-net
     driver: bridge
 
 volumes:
