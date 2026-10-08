@@ -102,7 +102,7 @@ jobs:
 
             echo "${IMAGE_REPO}-migrations: ${IMAGE_TAG} ${{github.repository}} - cipp"
 
-            # docker pull ${IMAGE_REPO}-migrations:${IMAGE_TAG}
+            docker pull ${IMAGE_REPO}-migrations:${IMAGE_TAG}
 
             # docker run --rm \
             #   --network news-net \
