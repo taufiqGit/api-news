@@ -99,6 +99,8 @@ jobs:
             . ./.env
             set +a
 
+            docker pull ${IMAGE_REPO}-migrations:${IMAGE_TAG}
+            
             docker run --rm \
               --network news-net \
               ${IMAGE_REPO}-migrations:${IMAGE_TAG} \
