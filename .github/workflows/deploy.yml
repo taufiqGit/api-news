@@ -104,12 +104,12 @@ jobs:
 
             docker pull ghcr.io/${IMAGE_REPO}-migrations:${IMAGE_TAG}
 
-            # docker run --rm \
-            #   --network news-net \
-            #   ${IMAGE_REPO}-migrations:${IMAGE_TAG} \
-            #   -path=/migrations \
-            #   -database="postgres://news:${POSTGRES_PASSWORD}@news-postgres:5432/news_db?sslmode=disable" \
-            #   up
+            docker run --rm \
+              --network news-net \
+              ${IMAGE_REPO}-migrations:${IMAGE_TAG} \
+              -path=/migrations \
+              -database="postgres://news:${POSTGRES_PASSWORD}@news-postgres:5432/news_db?sslmode=disable" \
+              up
 
             # docker pull ${IMAGE_REPO}:${IMAGE_TAG}
 
