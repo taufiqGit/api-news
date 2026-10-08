@@ -87,31 +87,32 @@ jobs:
             export IMAGE_TAG=${{ github.sha }}
             export IMAGE_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
 
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u taufiqGit --password-stdin <<< "${{ secrets.GHCR_TOKEN }}"
+            echo "${{ secrets.GHCR_TOKEN }}" 
+            # docker login ghcr.io -u taufiqGit --password-stdin <<< "${{ secrets.GHCR_TOKEN }}"
 
-            docker compose up -d news-postgres
+            # docker compose up -d news-postgres
 
-            until docker exec news-postgres pg_isready -U news -d news_db >/dev/null 2>&1; do
-              sleep 2
-            done
+            # until docker exec news-postgres pg_isready -U news -d news_db >/dev/null 2>&1; do
+            #   sleep 2
+            # done
 
-            set -a
-            . ./.env
-            set +a
+            # set -a
+            # . ./.env
+            # set +a
 
-            docker pull ${IMAGE_REPO}-migrations:${IMAGE_TAG}
+            # docker pull ${IMAGE_REPO}-migrations:${IMAGE_TAG}
 
-            docker run --rm \
-              --network news-net \
-              ${IMAGE_REPO}-migrations:${IMAGE_TAG} \
-              -path=/migrations \
-              -database="postgres://news:${POSTGRES_PASSWORD}@news-postgres:5432/news_db?sslmode=disable" \
-              up
+            # docker run --rm \
+            #   --network news-net \
+            #   ${IMAGE_REPO}-migrations:${IMAGE_TAG} \
+            #   -path=/migrations \
+            #   -database="postgres://news:${POSTGRES_PASSWORD}@news-postgres:5432/news_db?sslmode=disable" \
+            #   up
 
-            docker pull ${IMAGE_REPO}:${IMAGE_TAG}
+            # docker pull ${IMAGE_REPO}:${IMAGE_TAG}
 
-            docker compose up -d --no-build news-api
+            # docker compose up -d --no-build news-api
 
-            docker image prune -af
+            # docker image prune -af
             
             
