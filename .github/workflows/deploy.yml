@@ -87,7 +87,7 @@ jobs:
             export IMAGE_TAG=${{ github.sha }}
             export IMAGE_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
 
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u taufiqGit --password-stdin <<< "$GHCR_TOKEN"
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u taufiqGit --password-stdin <<< "${{ secrets.GHCR_TOKEN }}"
 
             docker compose up -d news-postgres
 
