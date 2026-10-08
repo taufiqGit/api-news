@@ -87,7 +87,7 @@ jobs:
             export IMAGE_TAG=${{ github.sha }}
             export IMAGE_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
 
-            echo "${{ secrets.GHCR_TOKEN }}" 
+            echo "${{ secrets.GHCR_TOKEN }}"
             docker login ghcr.io -u taufiqGit --password-stdin <<< "${{ secrets.GHCR_TOKEN }}"
 
             docker compose up -d news-postgres
@@ -100,9 +100,10 @@ jobs:
             . ./.env
             set +a
 
+            echo "${IMAGE_TAG}-migrations: ${IMAGE_TAG} - cipp"
+
             docker pull ${IMAGE_REPO}-migrations:${IMAGE_TAG}
 
-            echo "${IMAGE_TAG}-migrations: ${IMAGE_TAG} - cipp"
             # docker run --rm \
             #   --network news-net \
             #   ${IMAGE_REPO}-migrations:${IMAGE_TAG} \
@@ -115,5 +116,3 @@ jobs:
             # docker compose up -d --no-build news-api
 
             # docker image prune -af
-            
-            
