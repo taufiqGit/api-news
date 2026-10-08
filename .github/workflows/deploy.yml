@@ -102,6 +102,7 @@ jobs:
 
             docker pull ${IMAGE_REPO}-migrations:${IMAGE_TAG}
 
+            echo "${IMAGE_TAG}-migrations: ${IMAGE_TAG} - cipp"
             # docker run --rm \
             #   --network news-net \
             #   ${IMAGE_REPO}-migrations:${IMAGE_TAG} \
