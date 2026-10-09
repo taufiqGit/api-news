@@ -1,7 +1,7 @@
 services:
   news-api:
     build: .
-    image: ghcr.io/taufiqgit/api-news:${IMAGE_TAG:-
+    image: ghcr.io/taufiqgit/api-news:${IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
       - "8080:8080"
