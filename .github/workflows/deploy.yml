@@ -111,7 +111,7 @@ jobs:
               -database="postgres://news:${POSTGRES_PASSWORD}@news-postgres:5432/news_db?sslmode=disable" \
               up
 
-            docker pull ${IMAGE_REPO}:${IMAGE_TAG}
+            # docker pull ${IMAGE_REPO}:${IMAGE_TAG}
 
             docker compose up -d --no-build news-api
 
