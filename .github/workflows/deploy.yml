@@ -118,3 +118,5 @@ jobs:
             docker compose up -d --no-build news-api
 
             docker image prune -af
+
+            docker ps
